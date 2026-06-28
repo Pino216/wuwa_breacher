@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>鸣潮破解协议解题器</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -37,6 +38,10 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
   background: #000;
 }
 .crop-area .img-wrap img { display: block; width: 100%; height: auto; user-select: none; }
+.anno-canvas {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; display: none;
+}
 .crop-rect {
   position: absolute; border: 2px solid; border-radius: 3px;
   cursor: move; touch-action: none;
@@ -67,8 +72,6 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
   cursor: pointer; transition: all 0.3s;
 }
 .crop-btn:hover { background: #0f0; color: #000; box-shadow: 0 0 16px #0f0; }
-.crop-btn.auto-btn { border-color: #0a0; color: #0a0; }
-.crop-btn.auto-btn:hover { background: #0a0; color: #000; }
 .crop-hint { text-align: center; font-size: 0.75rem; color: #080; margin: 8px 0; }
 
 /* 加载 */
@@ -88,25 +91,31 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 .grid-wrapper { display: flex; justify-content: center; margin: 16px 0; }
 .grid { display: inline-grid; gap: 4px; }
 .cell {
-  width: 64px; height: 52px; display: flex; align-items: center; justify-content: center;
+  width: 64px; height: 52px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
   background: #0d1a0d; border: 1px solid #0a0; border-radius: 4px;
   font-size: 1rem; font-weight: bold; color: #0f0; position: relative;
   transition: all 0.3s;
 }
-.cell .step-badge {
-  position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
-  border-radius: 50%; font-size: 0.7rem; font-weight: bold;
-  display: flex; align-items: center; justify-content: center;
-  border: 2px solid;
-  z-index: 1;
-}
-/* 反色高亮：标记格统一用绿色背景 + 深色文字 */
 .cell.step-highlight {
   background: #0f0; color: #000; border-color: #0f0;
   box-shadow: 0 0 20px rgba(0,255,0,0.6);
 }
-.cell.step-highlight .step-badge {
-  background: #000; color: #0f0; border-color: #0f0;
+.cell .step-num {
+  font-size: 1.5rem; font-weight: bold; line-height: 1;
+  text-shadow: 0 0 8px #0f0; margin-bottom: 1px;
+}
+.cell .dir-arrow {
+  font-size: 1rem; line-height: 1; font-weight: bold;
+  text-shadow: 0 0 6px #0f0;
+  pointer-events: none; margin-bottom: 1px;
+}
+.cell .dir-arrow.end {
+  color: #ff0; text-shadow: 0 0 6px #ff0;
+}
+.cell .hex-small {
+  font-size: 0.55rem; line-height: 1; opacity: 0.65;
+  position: absolute; bottom: 2px; right: 3px;
 }
 .targets { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .target-item { background: #0d1a0d; border: 1px solid #0f0; border-radius: 6px; padding: 8px 14px; font-size: 0.9rem; }
@@ -137,7 +146,7 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 <div class="container">
   <div class="dropzone" id="dropzone">
     <div class="hint">
-      📁 拖拽截图到此处<br>
+      📁 拖拽截图到此处 · 或 Ctrl+V 粘贴<br>
       <small>或点击选择文件</small>
     </div>
     <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg" style="display:none">
@@ -148,6 +157,7 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
     <div class="crop-hint">🟢 拖动绿色框选中矩阵区域  ·  🔵 拖动蓝色框选中目标序列区域</div>
     <div class="img-wrap" id="imgWrap">
       <img id="cropImg" alt="uploaded">
+      <canvas id="annoCanvas" class="anno-canvas"></canvas>
       <div class="crop-rect matrix-rect" id="matrixRect">
         <span class="label">[矩阵]</span>
         <div class="resize-handle"></div>
@@ -158,7 +168,6 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
       </div>
     </div>
     <div class="crop-actions">
-      <button class="crop-btn auto-btn" id="autoBtn">⚡ AUTO</button>
       <button class="crop-btn" id="solveBtn">▶ SOLVE</button>
     </div>
   </div>
@@ -196,9 +205,289 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
   </div>
 </div>
 
-<div class="footer">Optical Breacher · 拖拽方框调整裁剪区域</div>
+<div class="footer">WuWa Breacher · 拖拽方框调整裁剪区域 · 纯浏览器端运行</div>
 
 <script>
+// ===================================================================
+//  鸣潮破解协议解题器 — 纯浏览器端管线
+//  依赖: Tesseract.js (从 CDN 加载)
+// ===================================================================
+
+// ====== 配置 ======
+const BYTE_MAP = { '1':'1C', '5':'55', '7':'7A', 'B':'BD', 'E':'E9', 'F':'FF' };
+const VALID_BYTES = ['1C','55','7A','BD','E9','FF'];
+const CHAR_MAP = { '1':'1', '5':'5', '7':'7', 'B':'B', 'E':'E', 'F':'F' };
+const CHAR_FIX = { 'I':'1', 'L':'1', 'S':'5', 'G':'5', 'O':'0', '0':'B', '8':'B', '3':'B', '€':'E' };
+const KNOWN_FIX = { 'AD':'1', 'IC':'1', 'LC':'1', 'LE':'1', 'TA':'7', '3D':'B', '8D':'B', 'DB':'B', 'BB':'B', '21D':'B', '2D':'B', 'E€':'E', 'FFE':'F', 'Ff':'F' };
+
+function levenshtein(a, b) {
+  const m = []; for (let i = 0; i <= a.length; i++) { m[i] = [i]; for (let j = 1; j <= b.length; j++) m[i][j] = i === 0 ? j : 0; }
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    m[i][j] = b[j-1] === a[i-1] ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
+  return m[a.length][b.length];
+}
+
+function cleanToken(t) {
+  let s = t.trim().toUpperCase();
+  if (BYTE_MAP[s]) return s;
+  if (CHAR_MAP[s]) return s;
+  if (KNOWN_FIX[s]) return KNOWN_FIX[s];
+  s = s.split('').map(c => CHAR_FIX[c] || c).join('');
+  if (BYTE_MAP[s]) return s;
+  if (CHAR_MAP[s]) return s;
+  if (s.length === 2) {
+    const c0 = CHAR_MAP[s[0]] || CHAR_FIX[s[0]] || s[0];
+    const c1 = CHAR_MAP[s[1]] || CHAR_FIX[s[1]] || s[1];
+    if (BYTE_MAP[c0 + c1]) return c0;
+  }
+  let best = null, minD = 99;
+  for (const v of VALID_BYTES) { const d = levenshtein(s, v); if (d < minD) { minD = d; best = v; } }
+  if (minD <= 1 && best) return best[0];
+  const first = s[0];
+  if (BYTE_MAP[first]) return first;
+  return null;
+}
+
+// ====== 求解器 ======
+function sequencesToString(seqs, matrix) {
+  return seqs.map(seq => { let r=''; for(let i=0;i<seq.length;i+=2) r+=matrix[parseInt(seq[i],10)][parseInt(seq[i+1],10)]; return r; });
+}
+function getSequences({ bufferSize, orientation, index, used, matrix, targets }) {
+  const n = matrix.length;
+  const nexts = [];
+  for (let i = 0; i < n; i++) { const pos = orientation==='row' ? index+i : i+index; if (!used.has(pos)) nexts.push(pos); }
+  if (bufferSize === 1) return nexts;
+  const init = [];
+  for (const rc of nexts) {
+    const sub = getSequences({ bufferSize: Math.min(bufferSize,6)-1, orientation: orientation==='row'?'col':'row', index: orientation==='row'?rc[1]:rc[0], used: new Set(used).add(rc), matrix, targets });
+    for (const s of sub) init.push(rc + s);
+  }
+  if (bufferSize > 6) {
+    const strs = sequencesToString(init, matrix);
+    const tStrs = targets.map(t => t.join(''));
+    const filtered = init.filter((_s,i) => tStrs.some(ts => strs[i].includes(ts)));
+    const res = [];
+    for (const seq of filtered) { const sub = getSequences({ bufferSize: bufferSize-6, orientation:'row', index: seq[10], used: new Set(seq.match(/.{1,2}/g)), matrix, targets }); for (const s of sub) res.push(seq + s); }
+    return res;
+  }
+  return init;
+}
+function evaluate(seqs, matrix, targets) {
+  const strs = sequencesToString(seqs, matrix);
+  const tStrs = targets.map(t => t.join(''));
+  let maxSc = 0;
+  const ev = strs.map((s,si) => { let sc=0,sl=0,mi=[]; tStrs.forEach((ts,i)=>{ const p=s.indexOf(ts); if(p>-1){ sc+=1+0.1*i; sl=Math.max(sl,p+ts.length); mi.push(i); }}); maxSc=Math.max(sc,maxSc); return {score:sc,idx:si,len:sl,mi}; });
+  const best = ev.filter(r => r.score === maxSc);
+  const minL = Math.min(...best.map(r => r.len));
+  const sh = best.filter(r => r.len === minL);
+  const ch = sh.map(r => ({ seq: seqs[r.idx].slice(0, minL*2), mi: r.mi }));
+  const seen = new Set();
+  return ch.filter(i => { if(seen.has(i.seq)) return false; seen.add(i.seq); return true; });
+}
+function solveWuthering(matrix, targets, buf) {
+  const n = matrix.length; let all = [];
+  function ss(bs, ori, idx, used) {
+    const nxt = []; for (let i = 0; i < n; i++) { const p = ori==='row'?idx+i:i+idx; if (!used.has(p)) nxt.push(p); }
+    if (bs === 1) return nxt;
+    const init = []; for (const rc of nxt) { const s = ss(Math.min(bs,6)-1, ori==='row'?'col':'row', ori==='row'?rc[1]:rc[0], new Set(used).add(rc)); for (const x of s) init.push(rc + x); }
+    if (bs > 6) { const strs = sequencesToString(init, matrix); const ts = targets.map(t=>t.join('')); const f = init.filter((s,i)=>ts.some(t=>strs[i].includes(t))); const r = []; for (const seq of f) { const s = ss(bs-6,'row',seq[10],new Set(seq.match(/.{1,2}/g))); for (const x of s) r.push(seq + x); } return r; }
+    return init;
+  }
+  for (let c = 0; c < n; c++) { if (buf === 1) { all.push('0'+c); continue; } const s = ss(buf-1, 'col', ''+c, new Set(['0'+c])); for (const x of s) all.push('0'+c + x); }
+  return evaluate(all, matrix, targets);
+}
+
+// ====== 图像预处理（Canvas API） ======
+function cropAndPreprocess(sourceCanvas, crop) {
+  // 裁剪
+  let cvs = document.createElement('canvas');
+  cvs.width = crop.w;
+  cvs.height = crop.h;
+  const ctx = cvs.getContext('2d');
+  ctx.drawImage(sourceCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+  // 自动放大：宽度 < 480px 时整数倍放大
+  const minW = 480;
+  if (crop.w < minW) {
+    const scale = Math.ceil(minW / crop.w);
+    const big = document.createElement('canvas');
+    big.width = crop.w * scale;
+    big.height = crop.h * scale;
+    const bCtx = big.getContext('2d');
+    bCtx.imageSmoothingEnabled = false;
+    bCtx.drawImage(cvs, 0, 0, big.width, big.height);
+    cvs = big;
+  }
+  // 灰阶 + 固定阈值二值化(80) + 反色(白底黑字)
+  const imgData = cvs.getContext('2d').getImageData(0, 0, cvs.width, cvs.height);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    const out = v > 80 ? 0 : 255; // 亮→黑(背景)，暗→白(文字)
+    d[i] = d[i+1] = d[i+2] = out;
+    d[i+3] = 255;
+  }
+  cvs.getContext('2d').putImageData(imgData, 0, 0);
+  return cvs;
+}
+
+function canvasToDataURL(cvs) {
+  return cvs.toDataURL('image/png');
+}
+
+// ====== OCR ======
+async function ocrCanvas(worker, cvs) {
+  const { data: { text } } = await worker.recognize(cvs);
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  const result = [];
+  for (const line of lines) {
+    const tokens = line.trim().split(/[\s|_()\u201c\u201d\u2018\u2019`'";:!?\[\]{}]+/).filter(t => t.length > 0);
+    const row = tokens.map(cleanToken).filter(t => t !== null);
+    if (row.length > 0) result.push(row);
+  }
+  return result;
+}
+
+// ====== 管线 ======
+async function runPipeline(imageDataUrl, crops) {
+  // 加载原始图到 canvas
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = imageDataUrl;
+  });
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = img.naturalWidth;
+  srcCanvas.height = img.naturalHeight;
+  srcCanvas.getContext('2d').drawImage(img, 0, 0);
+
+  // 默认裁剪坐标（基于 1562px 校准）
+  const refW = 1562;
+  const scale = (c) => ({
+    x: Math.round(c.x * img.naturalWidth / refW),
+    y: Math.round(c.y * img.naturalHeight / refW),
+    w: Math.round(c.w * img.naturalWidth / refW),
+    h: Math.round(c.h * img.naturalHeight / refW),
+  });
+
+  const defaultMatrixCrop = { x: 30, y: 45, w: 480, h: 450 };
+  const defaultTargetCrop = { x: 880, y: 45, w: 650, h: 160 };
+
+  let matrixCrop, targetCrop;
+  if (crops && crops.matrix) {
+    matrixCrop = { ...crops.matrix };
+    // 扩展 5px 防切边
+    matrixCrop.x = Math.max(0, matrixCrop.x - 5);
+    matrixCrop.y = Math.max(0, matrixCrop.y - 5);
+    matrixCrop.w += 10;
+    matrixCrop.h += 10;
+  } else {
+    matrixCrop = scale(defaultMatrixCrop);
+  }
+  if (crops && crops.targets) {
+    targetCrop = { ...crops.targets };
+    // 收缩 3px 防边缘干扰
+    targetCrop.x = Math.max(0, targetCrop.x + 3);
+    targetCrop.y = Math.max(0, targetCrop.y + 3);
+    targetCrop.w = Math.max(50, targetCrop.w - 6);
+    targetCrop.h = Math.max(30, targetCrop.h - 6);
+    targetCrop.h += 10;
+  } else {
+    targetCrop = scale(defaultTargetCrop);
+  }
+
+  // 预处理
+  const matrixProc = cropAndPreprocess(srcCanvas, matrixCrop);
+  const targetProc = cropAndPreprocess(srcCanvas, targetCrop);
+
+  // 调试图
+  const debugImages = {
+    matrix: canvasToDataURL(matrixProc),
+    targets: canvasToDataURL(targetProc),
+  };
+
+  // OCR
+  const worker = await Tesseract.createWorker('eng');
+  await worker.setParameters({ tessedit_pageseg_mode: '6' }); // PSM.SINGLE_BLOCK
+  const matrixRows = await ocrCanvas(worker, matrixProc);
+  const targetRows = await ocrCanvas(worker, targetProc);
+  await worker.terminate();
+
+  // 结果对象
+  const result = { matrix: [], targets: [], solved: false, buffer: 0, path: [], steps: [], matchedTargets: [], matrixSize: '', error: null, hexMatrix: [], hexTargets: [], debugImages };
+
+  let validMatrixRows = matrixRows.filter(r => r.length >= 3 && r.length <= 9);
+  const validTargetRows = targetRows.filter(r => r.length >= 2 && r.length <= 6);
+
+  if (validMatrixRows.length < 2 && matrixRows.some(r => r.length >= 2)) {
+    validMatrixRows = matrixRows.filter(r => r.length >= 2 && r.length <= 10);
+  }
+  if (validMatrixRows.length < 2) { result.error = '矩阵行数不足 (' + validMatrixRows.length + ' 行)'; return result; }
+
+  // 列数对齐（众数）
+  const colLengths = {};
+  for (const row of validMatrixRows) colLengths[row.length] = (colLengths[row.length] || 0) + 1;
+  const sorted = Object.entries(colLengths).sort((a,b) => b[1]-a[1] || (parseInt(b[0])-parseInt(a[0])));
+  const mostCommonLen = parseInt(sorted[0][0]);
+  const fixedRows = [];
+  for (const row of validMatrixRows) {
+    if (row.length === mostCommonLen) fixedRows.push(row);
+    else if (row.length > mostCommonLen) {
+      while (row.length > mostCommonLen) row.pop();
+      if (row.length === mostCommonLen) fixedRows.push(row);
+    }
+  }
+  result.matrix = fixedRows.length >= 2 ? fixedRows : validMatrixRows.filter(r => r.length === mostCommonLen);
+  result.targets = validTargetRows.slice(0, 6);
+  result.matrixSize = result.matrix.length + '×' + mostCommonLen;
+  result.hexMatrix = result.matrix.map(r => r.map(c => BYTE_MAP[c] || c));
+  result.hexTargets = result.targets.map(r => r.map(c => BYTE_MAP[c] || c));
+
+  // 目标交叉验证
+  const matrixHexSet = new Set(result.hexMatrix.flat());
+  for (const tRow of result.targets) {
+    for (let i = 0; i < tRow.length; i++) {
+      const hex = BYTE_MAP[tRow[i]] || tRow[i];
+      if (!matrixHexSet.has(hex)) {
+        let best = null, minD = 99;
+        for (const v of VALID_BYTES) {
+          if (matrixHexSet.has(v)) {
+            const d = levenshtein(hex, v);
+            if (d < minD) { minD = d; best = v; }
+          }
+        }
+        if (minD <= 2 && best) tRow[i] = best[0];
+      }
+    }
+  }
+  result.hexTargets = result.targets.map(r => r.map(c => BYTE_MAP[c] || c));
+
+  if (result.matrix.length < 2 || result.targets.length === 0) { result.error = 'OCR 结果不足以求解'; return result; }
+
+  // 求解
+  let bestSolution = null, bestBuf = 0;
+  for (const buf of [5, 6, 7, 8]) {
+    const solutions = solveWuthering(result.matrix, result.targets, buf);
+    if (solutions.length === 0) continue;
+    if (solutions[0].mi.length === result.targets.length) { bestSolution = solutions[0]; bestBuf = buf; break; }
+  }
+  if (bestSolution) {
+    result.solved = true; result.buffer = bestBuf;
+    for (let i = 0; i < bestSolution.seq.length; i += 2) {
+      const r = parseInt(bestSolution.seq[i]), c = parseInt(bestSolution.seq[i+1]);
+      result.path.push(BYTE_MAP[result.matrix[r][c]] || result.matrix[r][c]);
+      const dir = i === 0 ? '' : (() => {
+        const pr = parseInt(bestSolution.seq[i-2]), pc = parseInt(bestSolution.seq[i-1]);
+        return r === pr ? (c > pc ? 'right' : 'left') : (r > pr ? 'down' : 'up');
+      })();
+      result.steps.push({ row: r, col: c, step: i/2 + 1, value: BYTE_MAP[result.matrix[r][c]] || result.matrix[r][c], dir });
+    }
+    result.matchedTargets = bestSolution.mi;
+  }
+  return result;
+}
+
+// ====== UI 逻辑 ======
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const cropArea = document.getElementById('cropArea');
@@ -206,7 +495,6 @@ const cropImg = document.getElementById('cropImg');
 const imgWrap = document.getElementById('imgWrap');
 const matrixRect = document.getElementById('matrixRect');
 const targetsRect = document.getElementById('targetsRect');
-const autoBtn = document.getElementById('autoBtn');
 const solveBtn = document.getElementById('solveBtn');
 const loading = document.getElementById('loading');
 const loadingText = document.getElementById('loadingText');
@@ -230,6 +518,16 @@ dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover
 dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
 dropzone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+// 支持剪贴板粘贴（QQ/微信截图 Ctrl+V 直接贴入）
+document.addEventListener('paste', e => {
+  for (const item of e.clipboardData.items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      handleFile(item.getAsFile());
+      break;
+    }
+  }
+});
 
 function handleFile(file) {
   if (!file.type.startsWith('image/')) { alert('请选择图片文件'); return; }
@@ -251,7 +549,6 @@ function handleFile(file) {
 
 // ====== 裁剪矩形 ======
 function initRects() {
-  // 默认位置：按比例对应硬编码坐标（基于1562px宽度校准）
   const scale = imgWrap.clientWidth / 1562;
   setRect(matrixRect, 30 * scale, 45 * scale, 480 * scale, 450 * scale);
   setRect(targetsRect, 880 * scale, 45 * scale, 650 * scale, 160 * scale);
@@ -267,7 +564,7 @@ function setRect(el, x, y, w, h) {
 function getRect(el) {
   const cw = imgWrap.clientWidth;
   const rw = imgNaturalW || 1562;
-  const scale = rw / cw; // 显示坐标 → 原始图像坐标
+  const scale = rw / cw;
   return {
     x: Math.round(parseFloat(el.style.left) * scale),
     y: Math.round(parseFloat(el.style.top) * scale),
@@ -306,7 +603,6 @@ function makeDraggable(el) {
       el.style.left = l + 'px'; el.style.top = t + 'px';
     } else if (isResizing) {
       let w = startW + dx, h = startH + dy;
-      // 50px 最小尺寸限制
       w = Math.max(50, w); h = Math.max(30, h);
       el.style.width = w + 'px'; el.style.height = h + 'px';
     }
@@ -329,32 +625,27 @@ function makeDraggable(el) {
   }
 }
 
-// ====== 求解 ======
+// ====== 求解（浏览器端） ======
 async function solveWithCrops(crops) {
   if (!currentImage) return;
+  // 重新显示裁剪框（上次求解可能隐藏了它们）
+  document.getElementById('annoCanvas').style.display = 'none';
+  matrixRect.style.display = '';
+  targetsRect.style.display = '';
   showLoading('正在识别...');
   resultDiv.style.display = 'none';
   errorArea.style.display = 'none';
 
   try {
-    const res = await fetch('/api/solve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: currentImage, crops })
-    });
-    const data = await res.json();
+    const data = await runPipeline(currentImage, crops);
     hideLoading();
     if (data.error) { showError(data.error); return; }
     showResult(data);
-  } catch(e) { hideLoading(); showError('请求失败: ' + e.message); }
+  } catch(e) { hideLoading(); showError('求解失败: ' + e.message); }
 }
 
 solveBtn.addEventListener('click', () => {
   solveWithCrops({ matrix: getRect(matrixRect), targets: getRect(targetsRect) });
-});
-
-autoBtn.addEventListener('click', () => {
-  solveWithCrops(); // 不传 crops → 后端使用硬编码默认值
 });
 
 function showResult(data) {
@@ -364,8 +655,8 @@ function showResult(data) {
   addBadge(infoBar, '矩阵', data.matrixSize);
   addBadge(infoBar, '目标', data.targets.length + ' 条');
   addBadge(infoBar, data.solved ? '&#10003; 已解' : '&#10007; 未解', '');
-  
-  // 调试图（显示 OCR 实际处理的裁剪区域）
+
+  // 调试图
   if (data.debugImages && data.debugImages.matrix) {
     debugSection.style.display = 'block';
     debugMatrix.src = data.debugImages.matrix;
@@ -373,25 +664,54 @@ function showResult(data) {
   } else {
     debugSection.style.display = 'none';
   }
-  
-  // 矩阵
+
   // 矩阵
   grid.style.gridTemplateColumns = 'repeat(' + (data.hexMatrix[0]?.length || 4) + ', 64px)';
   grid.innerHTML = '';
   const stepMap = {};
   for (const s of data.steps) stepMap[s.row + ',' + s.col] = s;
+  // 计算每个格子到下个格子的方向
+  const nextDirMap = {};
+  for (let i = 0; i < data.steps.length - 1; i++) {
+    const cur = data.steps[i], next = data.steps[i + 1];
+    let dir = '';
+    if (next.row === cur.row && next.col > cur.col) dir = '→';
+    else if (next.row === cur.row && next.col < cur.col) dir = '←';
+    else if (next.col === cur.col && next.row > cur.row) dir = '↓';
+    else if (next.col === cur.col && next.row < cur.row) dir = '↑';
+    nextDirMap[cur.row + ',' + cur.col] = dir;
+  }
+  if (data.steps.length > 0) {
+    const last = data.steps[data.steps.length - 1];
+    nextDirMap[last.row + ',' + last.col] = '◆';
+  }
   for (let r = 0; r < data.hexMatrix.length; r++) {
     for (let c = 0; c < data.hexMatrix[r].length; c++) {
       const cell = document.createElement('div');
       cell.className = 'cell';
       const step = stepMap[r + ',' + c];
       if (step) {
+        // 路径格：显示大号步骤编号 + 方向箭头，hex 值以小字显示在底部
         cell.classList.add('step-highlight');
-        const badge = document.createElement('div');
-        badge.className = 'step-badge'; badge.textContent = step.step;
-        cell.appendChild(badge);
+        const stepNum = document.createElement('div');
+        stepNum.className = 'step-num';
+        stepNum.textContent = step.step;
+        cell.appendChild(stepNum);
+        const nd = nextDirMap[r + ',' + c];
+        if (nd) {
+          const arrow = document.createElement('div');
+          arrow.className = 'dir-arrow' + (nd === '◆' ? ' end' : '');
+          arrow.textContent = nd;
+          cell.appendChild(arrow);
+        }
+        // 小字 hex 值
+        const hexSmall = document.createElement('div');
+        hexSmall.className = 'hex-small';
+        hexSmall.textContent = data.hexMatrix[r][c] || '??';
+        cell.appendChild(hexSmall);
+      } else {
+        cell.textContent = data.hexMatrix[r][c] || '??';
       }
-      cell.textContent = data.hexMatrix[r][c] || '??';
       grid.appendChild(cell);
     }
   }
@@ -405,7 +725,7 @@ function showResult(data) {
       '<span class="status ' + (data.matchedTargets.includes(i) ? 'ok' : 'fail') + '">' + (data.matchedTargets.includes(i) ? '✓' : '✗') + '</span>';
     targetsEl.appendChild(item);
   }
-  // 步骤列表
+  // 步骤
   stepsList.innerHTML = '';
   if (data.solved && data.steps.length) {
     for (const s of data.steps) {
@@ -420,6 +740,73 @@ function showResult(data) {
   } else {
     stepsList.innerHTML = '<div style="color:#f44">未找到能匹配所有目标的路径</div>';
   }
+  // 在截图上标注路径
+  annotateImage(data);
+}
+
+// ====== 在截图矩阵上叠加标注路径 ======
+function annotateImage(data) {
+  const canvas = document.getElementById('annoCanvas');
+  if (!data.solved || !data.steps.length) { canvas.style.display = 'none'; return; }
+  const crop = getRect(matrixRect);
+  const rows = data.hexMatrix.length;
+  const cols = data.hexMatrix[0].length;
+  const cellW = crop.w / cols;
+  const cellH = crop.h / rows;
+  // 设置 canvas 尺寸为原始图像分辨率（CSS 缩放匹配显示）
+  canvas.width = imgNaturalW;
+  canvas.height = imgNaturalH;
+  const ctx = canvas.getContext('2d');
+  // 画连接线（从第一步到倒数第二步画指向下一步的线）
+  for (let i = 0; i < data.steps.length - 1; i++) {
+    const s = data.steps[i], ns = data.steps[i + 1];
+    const x1 = crop.x + s.col * cellW + cellW / 2;
+    const y1 = crop.y + s.row * cellH + cellH / 2;
+    const x2 = crop.x + ns.col * cellW + cellW / 2;
+    const y2 = crop.y + ns.row * cellH + cellH / 2;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    // 箭头头部（三角形）
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const headLen = 14;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLen * Math.cos(angle - 0.4), y2 - headLen * Math.sin(angle - 0.4));
+    ctx.lineTo(x2 - headLen * Math.cos(angle + 0.4), y2 - headLen * Math.sin(angle + 0.4));
+    ctx.closePath();
+    ctx.fillStyle = '#00ff00';
+    ctx.fill();
+  }
+  // 画每个步骤的圆点 + 编号
+  for (const s of data.steps) {
+    const cx = crop.x + s.col * cellW + cellW / 2;
+    const cy = crop.y + s.row * cellH + cellH / 2;
+    // 外发光
+    ctx.beginPath();
+    ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.25)';
+    ctx.fill();
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // 编号
+    ctx.fillStyle = '#00ff00';
+    ctx.font = 'bold 22px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 8;
+    ctx.fillText(s.step.toString(), cx, cy);
+    ctx.shadowBlur = 0;
+  }
+  canvas.style.display = 'block';
+  // 隐藏裁剪框
+  matrixRect.style.display = 'none';
+  targetsRect.style.display = 'none';
 }
 
 function addBadge(parent, label, value) {
@@ -430,7 +817,7 @@ function addBadge(parent, label, value) {
 }
 function showLoading(text) { loading.style.display = 'block'; loadingText.textContent = text || '正在识别...'; }
 function hideLoading() { loading.style.display = 'none'; }
-function showError(msg) { errorArea.textContent = msg; errorArea.style.display = 'block'; resultDiv.style.display = 'block'; }
+function showError(msg) { errorArea.textContent = msg; errorArea.style.display = 'block'; resultDiv.style.display = 'block'; document.getElementById('annoCanvas').style.display = 'none'; matrixRect.style.display = ''; targetsRect.style.display = ''; }
 
 restartBtn.addEventListener('click', resetAll);
 function resetAll() {
@@ -440,6 +827,9 @@ function resetAll() {
   loading.style.display = 'none';
   resultDiv.style.display = 'none';
   errorArea.style.display = 'none';
+  document.getElementById('annoCanvas').style.display = 'none';
+  matrixRect.style.display = '';
+  targetsRect.style.display = '';
 }
 </script>
 </body>

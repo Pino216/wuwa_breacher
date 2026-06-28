@@ -1,45 +1,26 @@
 # 鸣潮破解协议解题器 (WuWa Breacher)
 
-基于 Tesseract.js OCR 的鸣潮联动赛博朋克2077 破解协议小游戏自动解题器。
+**纯浏览器端** — 基于 Tesseract.js OCR 的鸣潮 × 赛博朋克2077 破解协议小游戏自动解题器。
+
+> 🚀 **在线体验**: 直接打开 [GitHub Pages 链接](https://你的用户名.github.io/wuwa-breacher/) 即可使用，无需安装任何东西！
 
 ## 快速开始
 
-```bash
-# 1. 安装依赖
-npm install
-
-# 2. 启动网页服务
-.\serve.cmd
-# 浏览器打开 http://localhost:3000
-
-# 3. 截取游戏中的破解协议面板，拖拽上传
-# 4. 用鼠标框选矩阵区（绿色）和目标序列区（蓝色）
-# 5. 点击 SOLVE → 自动识别 + 求解 + 标记步骤
+```
+1. 截取游戏中的破解协议面板（截图即可）
+2. 打开本网页（浏览器端运行，无需服务器）
+3. 拖拽上传截图
+4. 用鼠标框选矩阵区（🟢 绿色框）和目标序列区（🔵 蓝色框）
+5. 点击 SOLVE → 自动识别 + 求解 + 标记步骤
 ```
 
-## 使用方式
+### 按钮说明
 
-### 网页端（推荐）
-
-```
-.\serve.cmd
-# → http://localhost:3000
-```
-
-流程: **上传截图 → 框选区域 → SOLVE → 查看结果**
-
-- 🟢 绿色框 = 矩阵区域（拖动/缩放）
-- 🔵 蓝色框 = 目标序列区域
-- ⚡ AUTO = 使用默认裁剪坐标
-- ▶ SOLVE = 使用自定义框选坐标
-- 🔍 调试图 = 查看实际送入 OCR 的裁剪图片
-
-### 命令行
-
-```bash
-node breacher.js 截图.png
-node breacher.js 截图.png --debug   # 显示 OCR 原始输出
-```
+| 按钮 | 功能 |
+|------|------|
+| ⚡ **AUTO** | 使用默认裁剪坐标（适合全屏截图） |
+| ▶ **SOLVE** | 使用自定义框选坐标（框选越精确越好） |
+| 🔍 **调试图** | 展开查看实际送入 OCR 的裁剪图片，方便调试 |
 
 ## 输出示例
 
@@ -79,7 +60,7 @@ Buffer=6 (6步)  全部匹配: 目标1, 目标2
 ## 技术方案
 
 ```
-截图 → 缩放到 1562px → 按框选坐标裁剪
+截图 → Canvas 缩放 → 按框选坐标裁剪
   → 自动放大(≥480px) → 灰阶二值化(阈80) → 反色(白底黑字)
   → Tesseract.js OCR (PSM.SINGLE_BLOCK)
   → Levenshtein 模糊匹配清洗 token → 矩阵行对齐 → 求解器
@@ -105,28 +86,46 @@ Buffer=6 (6步)  全部匹配: 目标1, 目标2
 6. **Levenshtein 编辑距离**（阈值 1）模糊匹配
 7. 矩阵交叉验证（目标值不在矩阵中时自动修正）
 
+### 求解算法
+
+带剪枝的 **DFS（深度优先搜索）**：
+- 枚举第 0 行所有起点
+- 交替行/列方向，不重复走格子
+- Buffer > 6 步时剪枝：前 6 步不包含任何目标序列则丢弃
+- 按匹配目标数 → 路径长度评分排序
+
+## 部署到 GitHub Pages
+
+```bash
+# 当前已在 gh-pages 分支，直接推送
+git push origin gh-pages
+```
+
+然后在 GitHub 仓库 **Settings → Pages** → Source 选择 `gh-pages` 分支，保存即可。
+
+等待几分钟，访问 **https://Pino216.github.io/wuwa_breacher/** 就能用了。
+
 ## 项目文件
 
 | 文件 | 说明 |
 |------|------|
-| `breacher.js` | 主管线：图像处理 + OCR + 求解 + HTTP 服务 |
-| `index.html` | 网页前端：拖拽上传 + 框选裁剪 + 网格可视化 |
-| `ocr-pipeline.js` | OCR 独立模块（可单独引用） |
-| `serve.cmd` | 一键启动脚本 |
-| `package.json` | npm 依赖 |
+| `index.html` | **唯一入口** — 全部逻辑（UI + 图像处理 + OCR + 求解）内联于此 |
 | `.gitignore` | Git 忽略规则 |
 
 ## 依赖
 
-- **tesseract.js** — 浏览器端 OCR 引擎
-- **jimp** — 图像处理（缩放/裁剪/二值化）
+- **[tesseract.js](https://github.com/naptha/tesseract.js)** — 浏览器端 OCR 引擎（WASM），通过 CDN 加载
+- **Canvas API** — 浏览器原生图像处理（替代旧版 Jimp）
+- 无需 Node.js，无需安装，打开网页即用
+
+> 首次运行时 Tesseract 会自动从 CDN 下载约 5MB 语言包（`eng.traineddata`），之后会缓存。
 
 ## 注意
 
-- Node.js ≥ 18，需设置 `NODE_OPTIONS=--openssl-legacy-provider`
-- 首次运行 Tesseract 会自动从 CDN 下载语言包
 - 全屏截图建议使用网页端框选功能
 - 框选越精确，识别效果越好
+- 首次使用需要等待 Tesseract.js 语言包下载（~5MB，仅一次）
+- 建议使用最新版 Chrome/Edge/Firefox
 
 ## License
 
