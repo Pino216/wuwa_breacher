@@ -1,6 +1,6 @@
 # 鸣潮破解协议解题器 (WuWa Breacher)
 
-基于 Tesseract.js OCR 的鸣潮/赛博朋克2077 破解协议小游戏自动解题器。
+基于 Tesseract.js OCR 的鸣潮联动赛博朋克2077 破解协议小游戏自动解题器。
 
 ## 快速开始
 
