@@ -43,11 +43,11 @@ Buffer=6 (6步)  全部匹配: 目标1, 目标2
 
 ## 技术栈
 
-- **Tesseract.js** — 浏览器端 OCR（WASM）
+- **Tesseract.js** — 浏览器端 OCR（WASM），通过 BootCDN（又拍云）加载
 - **Canvas API** — 图像预处理
 - 纯前端，零服务器，可部署在 GitHub Pages
 
-> 首次使用会从 CDN 下载约 5MB OCR 语言包，之后缓存。
+> 首次使用会下载约 5MB OCR 语言包，之后缓存。国内用户如遇加载慢，页面会自动切换到备用 CDN。
 
 ## License
 
