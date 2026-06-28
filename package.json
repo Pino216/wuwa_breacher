@@ -1,0 +1,13 @@
+{
+  "name": "wuwa-breacher",
+  "version": "1.0.0",
+  "description": "鸣潮破解协议解题器 — 命令行工具",
+  "main": "breacher.js",
+  "scripts": {
+    "start": "node breacher.js"
+  },
+  "dependencies": {
+    "jimp": "^0.16.0",
+    "tesseract.js": "^7.0.0"
+  }
+}

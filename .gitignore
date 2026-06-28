@@ -1,0 +1,7 @@
+node_modules/
+eng.traineddata
+_tmp_upload.*
+ocr-*
+*.log
+.DS_Store
+Thumbs.db
