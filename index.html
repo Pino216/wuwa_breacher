@@ -89,31 +89,34 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 .grid { display: inline-grid; gap: 4px; }
 .cell {
   width: 64px; height: 52px; display: flex; align-items: center; justify-content: center;
-  background: #0d1a0d; border: 1px solid #0f0; border-radius: 4px;
+  background: #0d1a0d; border: 1px solid #0a0; border-radius: 4px;
   font-size: 1rem; font-weight: bold; color: #0f0; position: relative;
+  transition: all 0.3s;
 }
 .cell .step-badge {
-  position: absolute; top: -8px; right: -8px; width: 20px; height: 20px;
-  border-radius: 50%; background: #0f0; color: #000; font-size: 0.65rem;
-  font-weight: bold; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 6px #0f0;
+  position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
+  border-radius: 50%; font-size: 0.7rem; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid;
+  z-index: 1;
 }
-.cell.step-1 { border-color: #ff0; box-shadow: 0 0 12px #ff0; }
-.cell.step-1 .step-badge { background: #ff0; color: #000; }
-.cell.step-2 { border-color: #0ff; box-shadow: 0 0 12px #0ff; }
-.cell.step-2 .step-badge { background: #0ff; color: #000; }
-.cell.step-3 { border-color: #f0f; box-shadow: 0 0 12px #f0f; }
-.cell.step-3 .step-badge { background: #f0f; color: #fff; }
-.cell.step-4 { border-color: #f80; box-shadow: 0 0 12px #f80; }
-.cell.step-4 .step-badge { background: #f80; color: #000; }
-.cell.step-5 { border-color: #8f0; box-shadow: 0 0 12px #8f0; }
-.cell.step-5 .step-badge { background: #8f0; color: #000; }
-.cell.step-6 { border-color: #08f; box-shadow: 0 0 12px #08f; }
-.cell.step-6 .step-badge { background: #08f; color: #fff; }
-.cell.step-7 { border-color: #f00; box-shadow: 0 0 12px #f00; }
-.cell.step-7 .step-badge { background: #f00; color: #fff; }
-.cell.step-8 { border-color: #0f0; box-shadow: 0 0 12px #0f0; }
-.cell.step-8 .step-badge { background: #0f0; color: #000; }
+/* 反色高亮：标记格用亮色背景 + 深色文字 + 白边序号 */
+.cell.step-1 { background: #ff0; color: #000; border-color: #ff0; box-shadow: 0 0 16px #ff0; }
+.cell.step-1 .step-badge { background: #000; color: #ff0; border-color: #ff0; }
+.cell.step-2 { background: #0ff; color: #000; border-color: #0ff; box-shadow: 0 0 16px #0ff; }
+.cell.step-2 .step-badge { background: #000; color: #0ff; border-color: #0ff; }
+.cell.step-3 { background: #f0f; color: #fff; border-color: #f0f; box-shadow: 0 0 16px #f0f; }
+.cell.step-3 .step-badge { background: #fff; color: #f0f; border-color: #f0f; }
+.cell.step-4 { background: #f80; color: #000; border-color: #f80; box-shadow: 0 0 16px #f80; }
+.cell.step-4 .step-badge { background: #000; color: #f80; border-color: #f80; }
+.cell.step-5 { background: #8f0; color: #000; border-color: #8f0; box-shadow: 0 0 16px #8f0; }
+.cell.step-5 .step-badge { background: #000; color: #8f0; border-color: #8f0; }
+.cell.step-6 { background: #08f; color: #fff; border-color: #08f; box-shadow: 0 0 16px #08f; }
+.cell.step-6 .step-badge { background: #fff; color: #08f; border-color: #08f; }
+.cell.step-7 { background: #f44; color: #fff; border-color: #f44; box-shadow: 0 0 16px #f44; }
+.cell.step-7 .step-badge { background: #fff; color: #f44; border-color: #f44; }
+.cell.step-8 { background: #0f0; color: #000; border-color: #0f0; box-shadow: 0 0 16px #0f0; }
+.cell.step-8 .step-badge { background: #000; color: #0f0; border-color: #0f0; }
 .targets { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .target-item { background: #0d1a0d; border: 1px solid #0f0; border-radius: 6px; padding: 8px 14px; font-size: 0.9rem; }
 .target-item.matched { border-color: #0f0; background: #0a1a0a; }
