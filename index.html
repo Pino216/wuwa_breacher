@@ -238,11 +238,28 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 // ===================================================================
 
 // ====== 配置 ======
-const BYTE_MAP = { '1':'1C', '5':'55', '7':'7A', 'B':'BD', 'E':'E9', 'F':'FF', 'G':'GO', 'M':'MO', 'O':'OD', 'N':'IN', 'R':'RN', 'S':'GS', 'L':'OL', 'T':'IS', 'A':'AR' };
-const VALID_BYTES = ['1C','55','7A','BD','E9','FF','GO','MO','OD','IN','RN','GS','OL','IS','AR'];
-const CHAR_MAP = { '1':'1', '5':'5', '7':'7', 'B':'B', 'E':'E', 'F':'F', 'G':'G', 'M':'M', 'O':'O', 'N':'N', 'R':'R', 'S':'S', 'L':'L', 'T':'T', 'A':'A' };
+// Hex 数值（原始 6 个，首字符即 key）
+const BYTE_MAP = { '1':'1C', '5':'55', '7':'7A', 'B':'BD', 'E':'E9', 'F':'FF' };
+// 菜单字母码（双字符 + 单字符，key 与首字符不一定相同）
+const LETTER_MAP = { 'G':'GO', 'V':'MO', 'P':'OD', 'H':'IN', 'R':'RN', 'S':'GS', 'L':'OL', 'T':'IS', 'A':'AR', 'Y':'MY', 'Z':'MA', 'M':'M', 'O':'O', 'N':'N' };
+
+// 合并供显示查询用
+const ALL_MAP = Object.assign({}, BYTE_MAP, LETTER_MAP);
+
+const VALID_HEX = ['1C','55','7A','BD','E9','FF'];
+const VALID_LETTERS = ['GO','MO','OD','IN','RN','GS','OL','IS','AR','MY','MA','M','N','O'];
+const VALID_BYTES = VALID_HEX.concat(VALID_LETTERS); // 向下兼容
+
+const CHAR_MAP = { '1':'1', '5':'5', '7':'7', 'B':'B', 'E':'E', 'F':'F', 'G':'G', 'V':'V', 'P':'P', 'H':'H', 'R':'R', 'S':'S', 'L':'L', 'T':'T', 'A':'A', 'Y':'Y', 'Z':'Z', 'M':'M', 'O':'O', 'N':'N' };
 const CHAR_FIX = { 'I':'1', 'L':'1', 'S':'5', 'G':'5', 'O':'0', '0':'B', '8':'B', '3':'B', '€':'E' };
-const KNOWN_FIX = { 'AD':'1', 'IC':'1', 'LC':'1', 'LE':'1', 'TA':'7', '3D':'B', '8D':'B', 'DB':'B', 'BB':'B', '21D':'B', '2D':'B', 'E€':'E', 'FFE':'F', 'Ff':'F', 'GO':'G', 'MO':'M', 'OD':'O', 'IN':'N', 'RN':'R', 'GS':'S', 'OL':'L', 'IS':'T', 'AR':'A', '0D':'O', 'M0':'M', '0L':'O', 'G0':'G', '0A':'A', 'R0':'R', 'OB':'O' };
+const KNOWN_FIX = { 'AD':'1', 'IC':'1', 'LC':'1', 'LE':'1', 'TA':'7', '3D':'B', '8D':'B', 'DB':'B', 'BB':'B', '21D':'B', '2D':'B', 'E€':'E', 'FFE':'F', 'Ff':'F',
+  // → hex 字母误读修正
+  // 双字符字母码（KNOWN_FIX 在 CHAR_FIX 之前拦截）
+  'GO':'G', 'MO':'V', 'OD':'P', 'IN':'H', 'RN':'R', 'GS':'S', 'OL':'L', 'IS':'T', 'AR':'A', 'MY':'Y', 'MA':'Z',
+  // 单字符字母码
+  'M':'M', 'O':'O', 'N':'N',
+  // O→0 误读修正
+  '0D':'P', 'M0':'V', '0L':'L', 'G0':'G', '0A':'A', 'R0':'R', 'OB':'P' };
 
 function levenshtein(a, b) {
   const m = []; for (let i = 0; i <= a.length; i++) { m[i] = [i]; for (let j = 1; j <= b.length; j++) m[i][j] = i === 0 ? j : 0; }
@@ -265,7 +282,10 @@ function cleanToken(t) {
     if (BYTE_MAP[c0 + c1]) return c0;
   }
   let best = null, minD = 99;
-  for (const v of VALID_BYTES) { const d = levenshtein(s, v); if (d < minD) { minD = d; best = v; } }
+  // 按 token 特征选择匹配集：纯 hex 字符(0-9,A-F) 只比 hex，含超范围字母只比字母码
+  const isHexLike = /^[0-9A-F]+$/.test(s);
+  const validSet = isHexLike ? VALID_HEX : VALID_LETTERS;
+  for (const v of validSet) { const d = levenshtein(s, v); if (d < minD) { minD = d; best = v; } }
   if (minD <= 1 && best) return best[0];
   const first = s[0];
   if (BYTE_MAP[first]) return first;
@@ -465,14 +485,14 @@ async function runPipeline(imageDataUrl, crops) {
   result.matrix = fixedRows.length >= 2 ? fixedRows : validMatrixRows.filter(r => r.length === mostCommonLen);
   result.targets = validTargetRows.slice(0, 6);
   result.matrixSize = result.matrix.length + '×' + mostCommonLen;
-  result.hexMatrix = result.matrix.map(r => r.map(c => BYTE_MAP[c] || c));
-  result.hexTargets = result.targets.map(r => r.map(c => BYTE_MAP[c] || c));
+  result.hexMatrix = result.matrix.map(r => r.map(c => ALL_MAP[c] || c));
+  result.hexTargets = result.targets.map(r => r.map(c => ALL_MAP[c] || c));
 
   // 目标交叉验证
   const matrixHexSet = new Set(result.hexMatrix.flat());
   for (const tRow of result.targets) {
     for (let i = 0; i < tRow.length; i++) {
-      const hex = BYTE_MAP[tRow[i]] || tRow[i];
+      const hex = ALL_MAP[tRow[i]] || tRow[i];
       if (!matrixHexSet.has(hex)) {
         let best = null, minD = 99;
         for (const v of VALID_BYTES) {
@@ -485,7 +505,7 @@ async function runPipeline(imageDataUrl, crops) {
       }
     }
   }
-  result.hexTargets = result.targets.map(r => r.map(c => BYTE_MAP[c] || c));
+  result.hexTargets = result.targets.map(r => r.map(c => ALL_MAP[c] || c));
 
   if (result.matrix.length < 2 || result.targets.length === 0) { result.error = 'OCR 结果不足以求解'; return result; }
 
@@ -500,12 +520,12 @@ async function runPipeline(imageDataUrl, crops) {
     result.solved = true; result.buffer = bestBuf;
     for (let i = 0; i < bestSolution.seq.length; i += 2) {
       const r = parseInt(bestSolution.seq[i]), c = parseInt(bestSolution.seq[i+1]);
-      result.path.push(BYTE_MAP[result.matrix[r][c]] || result.matrix[r][c]);
+      result.path.push(ALL_MAP[result.matrix[r][c]] || result.matrix[r][c]);
       const dir = i === 0 ? '' : (() => {
         const pr = parseInt(bestSolution.seq[i-2]), pc = parseInt(bestSolution.seq[i-1]);
         return r === pr ? (c > pc ? 'right' : 'left') : (r > pr ? 'down' : 'up');
       })();
-      result.steps.push({ row: r, col: c, step: i/2 + 1, value: BYTE_MAP[result.matrix[r][c]] || result.matrix[r][c], dir });
+      result.steps.push({ row: r, col: c, step: i/2 + 1, value: ALL_MAP[result.matrix[r][c]] || result.matrix[r][c], dir });
     }
     result.matchedTargets = bestSolution.mi;
   }
@@ -698,7 +718,7 @@ copyDebugBtn.addEventListener('click', () => {
 // 反向映射表：'1C' → '1', 'GO' → 'G' 等
 function buildRevMap() {
   const m = {};
-  for (const [k, v] of Object.entries(BYTE_MAP)) m[v] = k;
+  for (const [k, v] of Object.entries(ALL_MAP)) m[v] = k;
   return m;
 }
 
