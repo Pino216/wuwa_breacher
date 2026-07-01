@@ -367,7 +367,7 @@ const TemplateDB = {
       const score = totalDark > 0 ? matchDark / totalDark : 0;
       if (score > bs) { bs = score; best = label; }
     }
-    return bs >= 0.7 ? { label: best, score: bs } : null;
+    return bs >= 0.55 ? { label: best, score: bs } : null;
   },
   recognize(canvas, rows, cols) {
     if (!Object.keys(this._store).length) return null;
@@ -381,7 +381,7 @@ const TemplateDB = {
   },
   saveToStorage() { try { localStorage.setItem('wt', JSON.stringify(this._store)); } catch (e) {} },
   loadFromStorage() { try { const d = localStorage.getItem('wt'); if (d) { this._store = JSON.parse(d); return; } } catch (e) {} /* 无本地模板 → 尝试加载内置模板 */ this.loadBuiltin(); },
-  loadBuiltin() { try { const r = new XMLHttpRequest(); r.open('GET', 'templates.json', false); r.send(); if (r.status === 200) { this._store = JSON.parse(r.responseText); } } catch (e) {} },
+  loadBuiltin() { try { const r = new XMLHttpRequest(); r.open('GET', 'templates.json', false); r.send(); if (r.status === 200) { const raw = JSON.parse(r.responseText); for (const [k, v] of Object.entries(raw)) { if (v && v.data) { const d = v.data; const step = d.length === 400 ? 1 : 4; const bin = new Uint8Array(400); for (let i = 0, si = 0; i < 400; i++, si += step) bin[i] = d[si] > 127 ? 255 : 0; this._store[k] = { data: Array.from(bin), count: v.count || 1 }; } } } } catch (e) {} },
   get size() { return Object.keys(this._store).length; },
   clear() { this._store = {}; this.saveToStorage(); }
 };
