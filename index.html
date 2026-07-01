@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>��������Э�����??/title>
+<title>鸣潮入侵协议解题器</title>
 <script src="https://cdn.bootcdn.net/ajax/libs/tesseract.js/5.1.1/tesseract.min.js"></script>
 <script>if(!window.Tesseract){document.write('<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"><\/script>')}</script>
 <style>
@@ -20,7 +20,8 @@ body {
 h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 0 10px #0f0; }
 .subtitle { color: #0a0; font-size: 0.8rem; margin-bottom: 24px; }
 .container { max-width: 860px; width: 100%; padding: 0 16px; }
-/* �ϴ�??*/
+
+/* 上传区 */
 .dropzone {
   border: 2px dashed #0f0; border-radius: 8px; padding: 40px;
   text-align: center; cursor: pointer; transition: all 0.3s;
@@ -29,7 +30,8 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 .dropzone:hover, .dropzone.dragover { border-color: #0f0; background: #0f1f0f; box-shadow: 0 0 20px rgba(0,255,0,0.2); }
 .dropzone .hint { color: #0a0; font-size: 0.9rem; }
 .dropzone .hint small { display: block; margin-top: 8px; font-size: 0.75rem; color: #070; }
-/* �ü�??*/
+
+/* 裁剪区 */
 .crop-area { display: none; margin-bottom: 16px; }
 .crop-area .img-wrap {
   position: relative; display: inline-block; width: 100%;
@@ -72,7 +74,8 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 }
 .crop-btn:hover { background: #0f0; color: #000; box-shadow: 0 0 16px #0f0; }
 .crop-hint { text-align: center; font-size: 0.75rem; color: #080; margin: 8px 0; }
-/* ���� */
+
+/* 加载 */
 .loading { text-align: center; padding: 32px; display: none; }
 .loading .spinner {
   display: inline-block; width: 24px; height: 24px;
@@ -81,7 +84,8 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
   margin-right: 12px; vertical-align: middle;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-/* ���?*/
+
+/* 结果 */
 .result { display: none; }
 .section-title { font-size: 1rem; margin: 20px 0 12px; border-bottom: 1px solid #0f0; padding-bottom: 4px; }
 .error-msg { color: #f44; padding: 16px; background: #1a0a0a; border: 1px solid #f44; border-radius: 6px; margin-bottom: 16px; }
@@ -143,48 +147,54 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 </style>
 </head>
 <body>
-<h1>����������Э�������??/h1>
-<div class="subtitle">�ϴ���ͼ ??��ѡ��????�Զ����?/div>
+
+<h1>▌鸣潮入侵协议解题器▐</h1>
+<div class="subtitle">上传截图 → 框选区域 → 自动求解</div>
+
 <div class="container">
   <div class="dropzone" id="dropzone">
     <div class="hint">
-      ?? ��ק��ͼ����??�� ??Ctrl+V ճ��<br>
-      <small>����ѡ���ļ�</small>
+      📁 拖拽截图到此处 · 或 Ctrl+V 粘贴<br>
+      <small>或点击选择文件</small>
     </div>
     <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg" style="display:none">
   </div>
-  <!-- �ü����� -->
+
+  <!-- 裁剪区域 -->
   <div class="crop-area" id="cropArea">
-    <div class="crop-hint">?? �϶���ɫ��ѡ�о�������  ��  ?? �϶���ɫ��ѡ��Ŀ����������</div>
+    <div class="crop-hint">🟢 拖动绿色框选中矩阵区域  ·  🔵 拖动蓝色框选中目标序列区域</div>
     <div class="img-wrap" id="imgWrap">
       <img id="cropImg" alt="uploaded">
       <canvas id="annoCanvas" class="anno-canvas"></canvas>
       <div class="crop-rect matrix-rect" id="matrixRect">
-        <span class="label">[����]</span>
+        <span class="label">[矩阵]</span>
         <div class="resize-handle"></div>
       </div>
       <div class="crop-rect targets-rect" id="targetsRect">
-        <span class="label">[Ŀ��]</span>
+        <span class="label">[目标]</span>
         <div class="resize-handle"></div>
       </div>
     </div>
     <div class="crop-actions">
-      <button class="crop-btn" id="solveBtn">??SOLVE</button>
+      <button class="crop-btn" id="solveBtn">▶ SOLVE</button>
     </div>
   </div>
+
   <div class="loading" id="loading">
     <span class="spinner"></span>
-    <span id="loadingText">����ʶ��...</span>
+    <span id="loadingText">正在识别...</span>
   </div>
+
   <div class="result" id="result">
     <div id="errorArea" class="error-msg" style="display:none"></div>
-    <div class="section-title">??����</div>
+    <div class="section-title">▸ 矩阵</div>
     <div class="info-bar" id="infoBar"></div>
     <div class="grid-wrapper"><div class="grid" id="grid"></div></div>
-    <div class="section-title">??Ŀ������</div>
+    <div class="section-title">▸ 目标序列</div>
     <div class="targets" id="targets"></div>
-    <div class="section-title">??���˳��?/div>
+    <div class="section-title">▸ 点击顺序</div>
     <div class="steps-list" id="stepsList"></div>
+
     <button id="resolveBtn" class="crop-btn" style="display:none;margin:16px auto">🔄 重新求解</button>
     <div id="templateBar" style="display:none;text-align:center;margin:8px 0;font-size:0.8rem">
       <span id="templateStatus" style="color:#0a0"></span>
@@ -193,68 +203,79 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
       <label style="color:#0a0;margin-left:10px;cursor:pointer">
         <input type="checkbox" id="tmplModeCheck"> 模板模式
       </label>
-    </div>?? �������?/button>
+    </div>
+
     <details id="debugSection" style="margin-top:20px;display:none">
-      <summary style="color:#0a0;cursor:pointer;font-size:0.85rem">?? ����ͼ��OCR ʵ�ʴ���Ĳü�����?/summary>
+      <summary style="color:#0a0;cursor:pointer;font-size:0.85rem">🔍 调试图（OCR 实际处理的裁剪区域）</summary>
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px">
         <div style="flex:1;min-width:200px">
-          <div style="font-size:0.75rem;color:#0f0;margin-bottom:4px">����????OCR</div>
+          <div style="font-size:0.75rem;color:#0f0;margin-bottom:4px">矩阵区 → OCR</div>
           <img id="debugMatrix" style="width:100%;border:1px solid #0f0;border-radius:4px">
         </div>
         <div style="flex:1;min-width:200px">
-          <div style="font-size:0.75rem;color:#0ff;margin-bottom:4px">Ŀ��????OCR</div>
+          <div style="font-size:0.75rem;color:#0ff;margin-bottom:4px">目标区 → OCR</div>
           <img id="debugTargets" style="width:100%;border:1px solid #0ff;border-radius:4px">
         </div>
       </div>
       <div style="margin-top:12px;border-top:1px solid #0a0;padding-top:10px">
-        <div style="font-size:0.8rem;color:#0a0;margin-bottom:6px">Tesseract ԭʼ�����cleanToken ֮ǰ??/div>
+        <div style="font-size:0.8rem;color:#0a0;margin-bottom:6px">Tesseract 原始输出（cleanToken 之前）</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
           <div style="flex:1;min-width:200px">
-            <div style="font-size:0.7rem;color:#0f0;margin-bottom:2px">����??/div>
+            <div style="font-size:0.7rem;color:#0f0;margin-bottom:2px">矩阵区</div>
             <pre id="rawMatrixText" style="background:#0a0a0a;border:1px solid #0a0;border-radius:4px;padding:8px;font-size:0.75rem;color:#0f0;white-space:pre-wrap;margin:0;min-height:40px"></pre>
           </div>
           <div style="flex:1;min-width:200px">
-            <div style="font-size:0.7rem;color:#0ff;margin-bottom:2px">Ŀ��??/div>
+            <div style="font-size:0.7rem;color:#0ff;margin-bottom:2px">目标区</div>
             <pre id="rawTargetsText" style="background:#0a0a0a;border:1px solid #0a0;border-radius:4px;padding:8px;font-size:0.75rem;color:#0ff;white-space:pre-wrap;margin:0;min-height:40px"></pre>
           </div>
         </div>
-        <button id="copyDebugBtn" style="margin-top:8px;padding:6px 16px;background:transparent;border:1px solid #0a0;border-radius:4px;color:#0a0;font-family:inherit;font-size:0.75rem;cursor:pointer">?? ���Ƶ�����Ϣ</button>
+        <button id="copyDebugBtn" style="margin-top:8px;padding:6px 16px;background:transparent;border:1px solid #0a0;border-radius:4px;color:#0a0;font-family:inherit;font-size:0.75rem;cursor:pointer">📋 复制调试信息</button>
       </div>
     </details>
+
     <button id="restartBtn" class="restart-btn">RESTART</button>
   </div>
 </div>
-<div class="footer">WuWa Breacher �� ��ק��������ü�����?�� �����������??/div>
+
+<div class="footer">WuWa Breacher · 拖拽方框调整裁剪区域 · 纯浏览器端运行</div>
+
 <script>
 // ===================================================================
-//  ��������Э�����????��������˹�??//  ����: Tesseract.js (??CDN ����)
+//  鸣潮入侵协议解题器 — 纯浏览器端管线
+//  依赖: Tesseract.js (从 CDN 加载)
 // ===================================================================
-// ====== ���� ======
-// Hex ��ֵ��ԭʼ 6 �������ַ��� key??const BYTE_MAP = { '1':'1C', '5':'55', '7':'7A', 'B':'BD', 'E':'E9', 'F':'FF' };
-// �˵���ĸ�루˫��??+ ���ַ���key �����ַ���һ����ͬ��
+
+// ====== 配置 ======
+// Hex 数值（原始 6 个，首字符即 key）
+const BYTE_MAP = { '1':'1C', '5':'55', '7':'7A', 'B':'BD', 'E':'E9', 'F':'FF' };
+// 菜单字母码（双字符 + 单字符，key 与首字符不一定相同）
 const LETTER_MAP = { 'G':'GO', 'V':'MO', 'P':'OD', 'H':'IN', 'R':'RN', 'S':'GS', 'L':'OL', 'T':'IS', 'A':'AR', 'Y':'MY', 'Z':'MA', 'M':'M', 'O':'O', 'N':'N' };
-// �ϲ�����ʾ��ѯ��
+
+// 合并供显示查询用
 const ALL_MAP = Object.assign({}, BYTE_MAP, LETTER_MAP);
+
 const VALID_HEX = ['1C','55','7A','BD','E9','FF'];
 const VALID_LETTERS = ['GO','MO','OD','IN','RN','GS','OL','IS','AR','MY','MA','M','N','O'];
-const VALID_BYTES = VALID_HEX.concat(VALID_LETTERS); // ���¼���
+const VALID_BYTES = VALID_HEX.concat(VALID_LETTERS); // 向下兼容
+
 const CHAR_MAP = { '1':'1', '5':'5', '7':'7', 'B':'B', 'E':'E', 'F':'F', 'G':'G', 'V':'V', 'P':'P', 'H':'H', 'R':'R', 'S':'S', 'L':'L', 'T':'T', 'A':'A', 'Y':'Y', 'Z':'Z', 'M':'M', 'O':'O', 'N':'N' };
-const CHAR_FIX = { 'I':'1', 'L':'1', 'S':'5', 'G':'5', 'O':'0', '0':'B', '8':'B', '3':'B', '??:'E' };
-const KNOWN_FIX = { 'AD':'1', 'IC':'1', 'LC':'1', 'LE':'1', 'TA':'7', '3D':'B', '8D':'B', 'DB':'B', 'BB':'B', '21D':'B', '2D':'B', 'E??:'E', 'FFE':'F', 'Ff':'F',
-  // ??hex ��ĸ�������?
-  // ˫�ַ���ĸ�루KNOWN_FIX ??CHAR_FIX ֮ǰ����??  'GO':'G', 'MO':'V', 'OD':'P', 'IN':'H', 'RN':'R', 'GS':'S', 'OL':'L', 'IS':'T', 'AR':'A', 'MY':'Y', 'MA':'Z',
-  // ���ַ���ĸ��
+const CHAR_FIX = { 'I':'1', 'L':'1', 'S':'5', 'G':'5', 'O':'0', '0':'B', '8':'B', '3':'B', '€':'E' };
+const KNOWN_FIX = { 'AD':'1', 'IC':'1', 'LC':'1', 'LE':'1', 'TA':'7', '3D':'B', '8D':'B', 'DB':'B', 'BB':'B', '21D':'B', '2D':'B', 'E€':'E', 'FFE':'F', 'Ff':'F',
+  // → hex 字母误读修正
+  // 双字符字母码（KNOWN_FIX 在 CHAR_FIX 之前拦截）
+  'GO':'G', 'MO':'V', 'OD':'P', 'IN':'H', 'RN':'R', 'GS':'S', 'OL':'L', 'IS':'T', 'AR':'A', 'MY':'Y', 'MA':'Z',
+  // 单字符字母码
   'M':'M', 'O':'O', 'N':'N',
-  // ???? O ????????
-  'OO':'O', '(0':'O',
-  // O?? �������?
+  // O→0 误读修正
   '0D':'P', 'M0':'V', '0L':'L', 'G0':'G', '0A':'A', 'R0':'R', 'OB':'P' };
+
 function levenshtein(a, b) {
   const m = []; for (let i = 0; i <= a.length; i++) { m[i] = [i]; for (let j = 1; j <= b.length; j++) m[i][j] = i === 0 ? j : 0; }
   for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
     m[i][j] = b[j-1] === a[i-1] ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
   return m[a.length][b.length];
 }
+
 function cleanToken(t) {
   let s = t.trim().toUpperCase();
   if (BYTE_MAP[s]) return s;
@@ -269,7 +290,7 @@ function cleanToken(t) {
     if (BYTE_MAP[c0 + c1]) return c0;
   }
   let best = null, minD = 99;
-  // ??token ����ѡ��ƥ�伯��??hex �ַ�(0-9,A-F) ֻ�� hex��������Χ��ĸֻ����ĸ��
+  // 按 token 特征选择匹配集：纯 hex 字符(0-9,A-F) 只比 hex，含超范围字母只比字母码
   const isHexLike = /^[0-9A-F]+$/.test(s);
   const validSet = isHexLike ? VALID_HEX : VALID_LETTERS;
   for (const v of validSet) { const d = levenshtein(s, v); if (d < minD) { minD = d; best = v; } }
@@ -278,99 +299,59 @@ function cleanToken(t) {
   if (BYTE_MAP[first]) return first;
   return null;
 }
-// ====== 像素模板匹配（替�?Tesseract 矩阵识别�?=====
-const TMPL_SIZE = 20; // 模板标准化尺�?
+
+// ====== 像素模板匹配 ======
+const TMPL_SIZE = 20;
 const TemplateDB = {
-  _store: {}, // { '1C': { data: [...], count: 1 }, 'GO': {...} }
-  // 保存模板：传�?Cell Canvas，提取灰度数�?
-  save(label, cellCanvas) {
-    const cvs = document.createElement('canvas');
-    cvs.width = TMPL_SIZE; cvs.height = TMPL_SIZE;
-    const ctx = cvs.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(cellCanvas, 0, 0, TMPL_SIZE, TMPL_SIZE);
-    const data = Array.from(ctx.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data);
-    if (!this._store[label]) this._store[label] = { data, count: 0 };
-    // 多张模板取平均（加权更新�?
-    const old = this._store[label];
-    if (old.count > 0) {
-      for (let i = 0; i < data.length; i++)
-        old.data[i] = (old.data[i] * old.count + data[i]) / (old.count + 1);
-    }
-    old.count++;
+  _store: {},
+  save(label, cvs) {
+    const c = document.createElement('canvas'); c.width = TMPL_SIZE; c.height = TMPL_SIZE;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    x.drawImage(cvs, 0, 0, TMPL_SIZE, TMPL_SIZE);
+    const d = Array.from(x.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data);
+    if (!this._store[label]) this._store[label] = { data: d, count: 1 };
+    else { const o = this._store[label]; for (let i = 0; i < d.length; i++) o.data[i] = (o.data[i] * o.count + d[i]) / (o.count + 1); o.count++; }
     this.saveToStorage();
   },
-  // 批量保存：传入矩阵各行�?+ 预处理后�?matrix canvas
-  saveAll(matrixValues, matrixCanvas) {
-    const rows = matrixValues.length, cols = matrixValues[0].length;
-    const cw = matrixCanvas.width / cols, ch = matrixCanvas.height / rows;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = document.createElement('canvas');
-        cell.width = cw; cell.height = ch;
-        const ctx = cell.getContext('2d');
-        ctx.drawImage(matrixCanvas, c * cw, r * ch, cw, ch, 0, 0, cw, ch);
-        this.save(matrixValues[r][c], cell);
-      }
+  saveAll(vals, canvas) {
+    const r = vals.length, c = vals[0].length, cw = canvas.width / c, ch = canvas.height / r;
+    for (let y = 0; y < r; y++) for (let x = 0; x < c; x++) {
+      const cell = document.createElement('canvas'); cell.width = Math.ceil(cw); cell.height = Math.ceil(ch);
+      cell.getContext('2d').drawImage(canvas, x * cw, y * ch, cw, ch, 0, 0, cell.width, cell.height);
+      this.save(vals[y][x], cell);
     }
   },
-  // 匹配：返�?{ label, score } �?null
   match(cellCanvas) {
-    if (Object.keys(this._store).length === 0) return null;
-    const cvs = document.createElement('canvas');
-    cvs.width = TMPL_SIZE; cvs.height = TMPL_SIZE;
-    const ctx = cvs.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(cellCanvas, 0, 0, TMPL_SIZE, TMPL_SIZE);
-    const cellData = ctx.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data;
-    let best = null, bestScore = 0;
-    for (const [label, tmpl] of Object.entries(this._store)) {
-      const d = tmpl.data;
-      let matches = 0;
-      for (let i = 0; i < cellData.length; i += 4) {
-        // 只比�?R 通道（二值图，R=G=B�?
-        if ((cellData[i] > 127) === (d[i] > 127)) matches++;
-      }
-      const score = matches / (cellData.length / 4);
-      if (score > bestScore) { bestScore = score; best = label; }
+    if (!Object.keys(this._store).length) return null;
+    const c = document.createElement('canvas'); c.width = TMPL_SIZE; c.height = TMPL_SIZE;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    x.drawImage(cellCanvas, 0, 0, TMPL_SIZE, TMPL_SIZE);
+    const cd = x.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data;
+    let best = null, bs = 0;
+    for (const [label, t] of Object.entries(this._store)) {
+      let m = 0; for (let i = 0; i < cd.length; i += 4) if ((cd[i] > 127) === (t.data[i] > 127)) m++;
+      const s = m / (cd.length / 4); if (s > bs) { bs = s; best = label; }
     }
-    if (bestScore >= 0.85) return { label: best, score: bestScore };
-    return null;
+    return bs >= 0.85 ? { label: best, score: bs } : null;
   },
-  // 用模板匹配识别整个矩�?
-  recognize(matrixCanvas, numRows, numCols) {
-    if (Object.keys(this._store).length === 0) return null;
-    const cw = matrixCanvas.width / numCols, ch = matrixCanvas.height / numRows;
-    const result = [];
-    for (let r = 0; r < numRows; r++) {
-      const row = [];
-      for (let c = 0; c < numCols; c++) {
-        const cell = document.createElement('canvas');
-        cell.width = Math.ceil(cw); cell.height = Math.ceil(ch);
-        const ctx = cell.getContext('2d');
-        ctx.drawImage(matrixCanvas, c * cw, r * ch, cw, ch, 0, 0, cell.width, cell.height);
-        const m = this.match(cell);
-        if (m) row.push(m.label);
-        else row.push(null);
-      }
-      result.push(row);
-    }
+  recognize(canvas, rows, cols) {
+    if (!Object.keys(this._store).length) return null;
+    const cw = canvas.width / cols, ch = canvas.height / rows, result = [];
+    for (let y = 0; y < rows; y++) { const row = []; for (let x = 0; x < cols; x++) {
+      const cell = document.createElement('canvas'); cell.width = Math.ceil(cw); cell.height = Math.ceil(ch);
+      cell.getContext('2d').drawImage(canvas, x * cw, y * ch, cw, ch, 0, 0, cell.width, cell.height);
+      const m = this.match(cell); row.push(m ? m.label : null);
+    } result.push(row); }
     return result;
   },
-  saveToStorage() {
-    try { localStorage.setItem('wuwa_templates', JSON.stringify(this._store)); } catch(e) {}
-  },
-  loadFromStorage() {
-    try {
-      const d = localStorage.getItem('wuwa_templates');
-      if (d) this._store = JSON.parse(d);
-    } catch(e) {}
-  },
+  saveToStorage() { try { localStorage.setItem('wt', JSON.stringify(this._store)); } catch (e) {} },
+  loadFromStorage() { try { const d = localStorage.getItem('wt'); if (d) this._store = JSON.parse(d); } catch (e) {} },
   get size() { return Object.keys(this._store).length; },
   clear() { this._store = {}; this.saveToStorage(); }
 };
 TemplateDB.loadFromStorage();
-// ====== ���??======
+
+// ====== 求解器 ======
 function sequencesToString(seqs, matrix) {
   return seqs.map(seq => { let r=''; for(let i=0;i<seq.length;i+=2) r+=matrix[parseInt(seq[i],10)][parseInt(seq[i+1],10)]; return r; });
 }
@@ -418,15 +399,17 @@ function solveWuthering(matrix, targets, buf) {
   for (let c = 0; c < n; c++) { if (buf === 1) { all.push('0'+c); continue; } const s = ss(buf-1, 'col', ''+c, new Set(['0'+c])); for (const x of s) all.push('0'+c + x); }
   return evaluate(all, matrix, targets);
 }
-// ====== ͼ��Ԥ�����Canvas API??======
+
+// ====== 图像预处理（Canvas API） ======
 function cropAndPreprocess(sourceCanvas, crop) {
-  // �ü�
+  // 裁剪
   let cvs = document.createElement('canvas');
   cvs.width = crop.w;
   cvs.height = crop.h;
   const ctx = cvs.getContext('2d');
   ctx.drawImage(sourceCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-  // �Զ��Ŵ󣺿�??< 480px ʱ��������??  const minW = 480;
+  // 自动放大：宽度 < 480px 时整数倍放大
+  const minW = 480;
   if (crop.w < minW) {
     const scale = Math.ceil(minW / crop.w);
     const big = document.createElement('canvas');
@@ -437,21 +420,23 @@ function cropAndPreprocess(sourceCanvas, crop) {
     bCtx.drawImage(cvs, 0, 0, big.width, big.height);
     cvs = big;
   }
-  // �ҽ� + �̶���ֵ��ֵ��(80) + ��ɫ(�׵׺���)
+  // 灰阶 + 固定阈值二值化(80) + 反色(白底黑字)
   const imgData = cvs.getContext('2d').getImageData(0, 0, cvs.width, cvs.height);
   const d = imgData.data;
   for (let i = 0; i < d.length; i += 4) {
     const v = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-    const out = v > 80 ? 0 : 255; // ����??����)��������(����)
+    const out = v > 80 ? 0 : 255; // 亮→黑(背景)，暗→白(文字)
     d[i] = d[i+1] = d[i+2] = out;
     d[i+3] = 255;
   }
   cvs.getContext('2d').putImageData(imgData, 0, 0);
   return cvs;
 }
+
 function canvasToDataURL(cvs) {
   return cvs.toDataURL('image/png');
 }
+
 // ====== OCR ======
 async function ocrCanvas(worker, cvs) {
   const { data: { text } } = await worker.recognize(cvs);
@@ -465,9 +450,10 @@ async function ocrCanvas(worker, cvs) {
   }
   return { rows: result, rawText };
 }
-// ====== ���� ======
+
+// ====== 管线 ======
 async function runPipeline(imageDataUrl, crops) {
-  // ����ԭʼͼ�� canvas
+  // 加载原始图到 canvas
   const img = await new Promise((resolve, reject) => {
     const i = new Image();
     i.onload = () => resolve(i);
@@ -478,19 +464,24 @@ async function runPipeline(imageDataUrl, crops) {
   srcCanvas.width = img.naturalWidth;
   srcCanvas.height = img.naturalHeight;
   srcCanvas.getContext('2d').drawImage(img, 0, 0);
-  // Ĭ�ϲü����꣨��??1562px У׼??  const refW = 1562;
+
+  // 默认裁剪坐标（基于 1562px 校准）
+  const refW = 1562;
   const scale = (c) => ({
     x: Math.round(c.x * img.naturalWidth / refW),
     y: Math.round(c.y * img.naturalHeight / refW),
     w: Math.round(c.w * img.naturalWidth / refW),
     h: Math.round(c.h * img.naturalHeight / refW),
   });
+
   const defaultMatrixCrop = { x: 30, y: 45, w: 480, h: 450 };
   const defaultTargetCrop = { x: 880, y: 45, w: 650, h: 160 };
+
   let matrixCrop, targetCrop;
   if (crops && crops.matrix) {
     matrixCrop = { ...crops.matrix };
-    // ��չ 5px ����??    matrixCrop.x = Math.max(0, matrixCrop.x - 5);
+    // 扩展 5px 防切边
+    matrixCrop.x = Math.max(0, matrixCrop.x - 5);
     matrixCrop.y = Math.max(0, matrixCrop.y - 5);
     matrixCrop.w += 10;
     matrixCrop.h += 10;
@@ -499,7 +490,8 @@ async function runPipeline(imageDataUrl, crops) {
   }
   if (crops && crops.targets) {
     targetCrop = { ...crops.targets };
-    // ���� 3px ����Ե��??    targetCrop.x = Math.max(0, targetCrop.x + 3);
+    // 收缩 3px 防边缘干扰
+    targetCrop.x = Math.max(0, targetCrop.x + 3);
     targetCrop.y = Math.max(0, targetCrop.y + 3);
     targetCrop.w = Math.max(50, targetCrop.w - 6);
     targetCrop.h = Math.max(30, targetCrop.h - 6);
@@ -507,43 +499,49 @@ async function runPipeline(imageDataUrl, crops) {
   } else {
     targetCrop = scale(defaultTargetCrop);
   }
-  // Ԥ��??  const matrixProc = cropAndPreprocess(srcCanvas, matrixCrop);
+
+  // 预处理
+  const matrixProc = cropAndPreprocess(srcCanvas, matrixCrop);
   const targetProc = cropAndPreprocess(srcCanvas, targetCrop);
-  // ����??  const debugImages = {
+
+  // 调试图
+  const debugImages = {
     matrix: canvasToDataURL(matrixProc),
     targets: canvasToDataURL(targetProc),
   };
+
   // OCR
   const worker = await Tesseract.createWorker('eng');
   await worker.setParameters({ tessedit_pageseg_mode: '6' }); // PSM.SINGLE_BLOCK
-    // 模板模式：矩阵区用像素匹配替代 Tesseract
+  // 模板模式：矩阵区用像素匹配替代 Tesseract
   let matrixResult;
-  const useTmpl = tmplModeCheck && tmplModeCheck.checked && TemplateDB.size > 0;
-  if (useTmpl) {
+  if (tmplModeCheck && tmplModeCheck.checked && TemplateDB.size > 0) {
     const guessRows = 5, guessCols = 5;
     const tmplRows = TemplateDB.recognize(matrixProc, guessRows, guessCols);
     const validRows = tmplRows.filter(r => r.filter(c => c !== null).length > 0);
-    const colCnt = {};
-    for (const r of validRows) { const n = r.filter(c => c !== null).length; colCnt[n] = (colCnt[n]||0)+1; }
-    const best = Object.entries(colCnt).sort((a,b)=>b[1]-a[1])[0];
+    const cc = {}; for (const r of validRows) { const n = r.filter(c => c !== null).length; cc[n] = (cc[n] || 0) + 1; }
+    const best = Object.entries(cc).sort((a, b) => b[1] - a[1])[0];
     const actualCols = best ? parseInt(best[0]) : guessCols;
-    const clean = [];
-    for (const r of validRows) { const nn = r.filter(c => c !== null); if (nn.length === actualCols) clean.push(nn); }
+    const clean = []; for (const r of validRows) { const nn = r.filter(c => c !== null); if (nn.length === actualCols) clean.push(nn); }
     matrixResult = { rows: clean, rawText: '(template match)' };
   } else {
     matrixResult = await ocrCanvas(worker, matrixProc);
   }
   const targetResult = await ocrCanvas(worker, targetProc);
   await worker.terminate();
-  // �������?
+
+  // 结果对象
   const result = { matrix: [], targets: [], solved: false, buffer: 0, path: [], steps: [], matchedTargets: [], matrixSize: '', error: null, hexMatrix: [], hexTargets: [], debugImages, matrixProc, rawMatrixText: matrixResult.rawText, rawTargetsText: targetResult.rawText };
+
   let validMatrixRows = matrixResult.rows.filter(r => r.length >= 3 && r.length <= 9);
   const validTargetRows = targetResult.rows.filter(r => r.length >= 2 && r.length <= 6);
+
   if (validMatrixRows.length < 2 && matrixResult.rows.some(r => r.length >= 2)) {
     validMatrixRows = matrixResult.rows.filter(r => r.length >= 2 && r.length <= 10);
   }
-  if (validMatrixRows.length < 2) { result.error = '������������ (' + validMatrixRows.length + ' ??'; return result; }
-  // �������루������
+  if (validMatrixRows.length < 2) { result.error = '矩阵行数不足 (' + validMatrixRows.length + ' 行)'; return result; }
+
+  // 列数对齐（众数）
   const colLengths = {};
   for (const row of validMatrixRows) colLengths[row.length] = (colLengths[row.length] || 0) + 1;
   const sorted = Object.entries(colLengths).sort((a,b) => b[1]-a[1] || (parseInt(b[0])-parseInt(a[0])));
@@ -558,10 +556,11 @@ async function runPipeline(imageDataUrl, crops) {
   }
   result.matrix = fixedRows.length >= 2 ? fixedRows : validMatrixRows.filter(r => r.length === mostCommonLen);
   result.targets = validTargetRows.slice(0, 6);
-  result.matrixSize = result.matrix.length + '��' + mostCommonLen;
+  result.matrixSize = result.matrix.length + '×' + mostCommonLen;
   result.hexMatrix = result.matrix.map(r => r.map(c => ALL_MAP[c] || c));
   result.hexTargets = result.targets.map(r => r.map(c => ALL_MAP[c] || c));
-  // Ŀ�꽻����֤
+
+  // 目标交叉验证
   const matrixHexSet = new Set(result.hexMatrix.flat());
   for (const tRow of result.targets) {
     for (let i = 0; i < tRow.length; i++) {
@@ -579,8 +578,10 @@ async function runPipeline(imageDataUrl, crops) {
     }
   }
   result.hexTargets = result.targets.map(r => r.map(c => ALL_MAP[c] || c));
-  if (result.matrix.length < 2 || result.targets.length === 0) { result.error = 'OCR �����������??; return result; }
-  // ���?
+
+  if (result.matrix.length < 2 || result.targets.length === 0) { result.error = 'OCR 结果不足以求解'; return result; }
+
+  // 求解
   let bestSolution = null, bestBuf = 0;
   for (const buf of [2, 3, 4, 5, 6, 7, 8, 9]) {
     const solutions = solveWuthering(result.matrix, result.targets, buf);
@@ -602,7 +603,8 @@ async function runPipeline(imageDataUrl, crops) {
   }
   return result;
 }
-// ====== UI �߼� ======
+
+// ====== UI 逻辑 ======
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const cropArea = document.getElementById('cropArea');
@@ -632,16 +634,19 @@ const clearTemplatesBtn = document.getElementById('clearTemplatesBtn');
 const tmplModeCheck = document.getElementById('tmplModeCheck');
 const templateBar = document.getElementById('templateBar');
 const templateStatus = document.getElementById('templateStatus');
+
 let currentImage = null;
 let imgNaturalW = 0, imgNaturalH = 0;
-let lastResult = null; // ����������??
-// ====== �ϴ� ======
+let lastResult = null; // 供重新求解使用
+
+// ====== 上传 ======
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
 dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
 dropzone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
-// ֧�ּ�����ճ����QQ/΢�Ž�ͼ Ctrl+V ֱ������??document.addEventListener('paste', e => {
+// 支持剪贴板粘贴（QQ/微信截图 Ctrl+V 直接贴入）
+document.addEventListener('paste', e => {
   for (const item of e.clipboardData.items) {
     if (item.type.startsWith('image/')) {
       e.preventDefault();
@@ -650,8 +655,9 @@ fileInput.addEventListener('change', e => { if (e.target.files.length) handleFil
     }
   }
 });
+
 function handleFile(file) {
-  if (!file.type.startsWith('image/')) { alert('��ѡ��ͼƬ�ļ�'); return; }
+  if (!file.type.startsWith('image/')) { alert('请选择图片文件'); return; }
   resultDiv.style.display = 'none';
   const reader = new FileReader();
   reader.onload = e => {
@@ -667,7 +673,8 @@ function handleFile(file) {
   };
   reader.readAsDataURL(file);
 }
-// ====== �ü����?======
+
+// ====== 裁剪矩形 ======
 function initRects() {
   const scale = imgWrap.clientWidth / 1562;
   setRect(matrixRect, 30 * scale, 45 * scale, 480 * scale, 450 * scale);
@@ -675,10 +682,12 @@ function initRects() {
   makeDraggable(matrixRect);
   makeDraggable(targetsRect);
 }
+
 function setRect(el, x, y, w, h) {
   el.style.left = x + 'px'; el.style.top = y + 'px';
   el.style.width = w + 'px'; el.style.height = h + 'px';
 }
+
 function getRect(el) {
   const cw = imgWrap.clientWidth;
   const rw = imgNaturalW || 1562;
@@ -690,9 +699,11 @@ function getRect(el) {
     h: Math.round(parseFloat(el.style.height) * scale),
   };
 }
+
 function makeDraggable(el) {
   let isDragging = false, isResizing = false;
   let startX, startY, startLeft, startTop, startW, startH;
+
   const onDown = (e, resize) => {
     e.preventDefault(); e.stopPropagation();
     isDragging = !resize; isResizing = resize;
@@ -707,6 +718,7 @@ function makeDraggable(el) {
     document.addEventListener('touchmove', onMove, { passive: false });
     document.addEventListener('touchend', onUp);
   };
+
   const onMove = e => {
     e.preventDefault();
     const p = e.type.startsWith('touch') ? e.touches[0] : e;
@@ -722,6 +734,7 @@ function makeDraggable(el) {
       el.style.width = w + 'px'; el.style.height = h + 'px';
     }
   };
+
   const onUp = () => {
     isDragging = false; isResizing = false;
     document.removeEventListener('mousemove', onMove);
@@ -729,6 +742,7 @@ function makeDraggable(el) {
     document.removeEventListener('touchmove', onMove);
     document.removeEventListener('touchend', onUp);
   };
+
   el.addEventListener('mousedown', e => onDown(e, false));
   el.addEventListener('touchstart', e => onDown(e, false), { passive: false });
   const handle = el.querySelector('.resize-handle');
@@ -737,67 +751,74 @@ function makeDraggable(el) {
     handle.addEventListener('touchstart', e => onDown(e, true), { passive: false });
   }
 }
-// ====== ��⣨������ˣ� ======
+
+// ====== 求解（浏览器端） ======
 async function solveWithCrops(crops) {
   if (!currentImage) return;
-  // ������ʾ�ü���ϴ����������������ǣ�?
+  // 重新显示裁剪框（上次求解可能隐藏了它们）
   document.getElementById('annoCanvas').style.display = 'none';
   matrixRect.style.display = '';
   targetsRect.style.display = '';
-  showLoading('����ʶ��...');
+  showLoading('正在识别...');
   resultDiv.style.display = 'none';
   errorArea.style.display = 'none';
+
   try {
     const data = await runPipeline(currentImage, crops);
     hideLoading();
     if (data.error) { showError(data.error); return; }
     showResult(data);
-  } catch(e) { hideLoading(); showError('���ʧ��? ' + e.message); }
+  } catch(e) { hideLoading(); showError('求解失败: ' + e.message); }
 }
+
 solveBtn.addEventListener('click', () => {
   solveWithCrops({ matrix: getRect(matrixRect), targets: getRect(targetsRect) });
 });
-// ���Ƶ�����Ϣ
+
+// 复制调试信息
 copyDebugBtn.addEventListener('click', () => {
-  const txt = '=== ����??OCR ԭʼ���?===\n' + (rawMatrixText.textContent || '') +
-    '\n\n=== Ŀ��??OCR ԭʼ���?===\n' + (rawTargetsText.textContent || '');
+  const txt = '=== 矩阵区 OCR 原始输出 ===\n' + (rawMatrixText.textContent || '') +
+    '\n\n=== 目标区 OCR 原始输出 ===\n' + (rawTargetsText.textContent || '');
   navigator.clipboard.writeText(txt).then(() => {
-    copyDebugBtn.textContent = '??�Ѹ�??;
-    setTimeout(() => { copyDebugBtn.textContent = '?? ���Ƶ�����Ϣ'; }, 2000);
+    copyDebugBtn.textContent = '✅ 已复制';
+    setTimeout(() => { copyDebugBtn.textContent = '📋 复制调试信息'; }, 2000);
   }).catch(() => {
     // fallback
     const ta = document.createElement('textarea');
     ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
     document.body.removeChild(ta);
-    copyDebugBtn.textContent = '??�Ѹ�??;
-    setTimeout(() => { copyDebugBtn.textContent = '?? ���Ƶ�����Ϣ'; }, 2000);
+    copyDebugBtn.textContent = '✅ 已复制';
+    setTimeout(() => { copyDebugBtn.textContent = '📋 复制调试信息'; }, 2000);
   });
 });
-// ����ӳ����'1C' ??'1', 'GO' ??'G' ??function buildRevMap() {
+
+// 反向映射表：'1C' → '1', 'GO' → 'G' 等
+function buildRevMap() {
   const m = {};
   for (const [k, v] of Object.entries(ALL_MAP)) m[v] = k;
   return m;
 }
-// ��ȡ�ɱ༭���ӣ��������?
+
+// 读取可编辑格子，重新求解
 resolveBtn.addEventListener('click', () => {
   if (!lastResult) return;
   const revMap = buildRevMap();
   const rows = lastResult.hexMatrix.length;
   const cols = lastResult.hexMatrix[0].length;
   const gridCells = grid.children;
-  // ��ȡ����
+  // 读取矩阵
   const newMatrix = [];
   for (let r = 0; r < rows; r++) {
     const row = [];
     for (let c = 0; c < cols; c++) {
       const el = gridCells[r * cols + c];
-      // ·�����ֵ��?.hex-small ���·����??textContent
+      // 路径格的值在 .hex-small 里，非路径格在 textContent
       const val = (el.querySelector('.hex-small')?.textContent || el.textContent).trim().toUpperCase();
       row.push(revMap[val] || val[0] || '?');
     }
     newMatrix.push(row);
   }
-  // ��ȡĿ������
+  // 读取目标序列
   const newTargets = [];
   for (const item of targetsEl.querySelectorAll('.target-item')) {
     const strong = item.querySelector('.target-val');
@@ -805,14 +826,15 @@ resolveBtn.addEventListener('click', () => {
     const parts = strong.textContent.trim().split(/\s+/).filter(Boolean);
     newTargets.push(parts.map(v => revMap[v] || v[0] || '?'));
   }
-  // ���?
+  // 求解
   let bestSolution = null, bestBuf = 0;
   for (const buf of [2, 3, 4, 5, 6, 7, 8, 9]) {
     const solutions = solveWuthering(newMatrix, newTargets, buf);
     if (solutions.length === 0) continue;
     if (solutions[0].mi.length === newTargets.length) { bestSolution = solutions[0]; bestBuf = buf; break; }
   }
-  // ����·���Ͳ�����??  if (bestSolution) {
+  // 更新路径和步骤显示
+  if (bestSolution) {
     const newData = Object.assign({}, lastResult, {
       matrix: newMatrix, targets: newTargets, solved: true, buffer: bestBuf,
       path: [], steps: [], matchedTargets: bestSolution.mi,
@@ -826,14 +848,15 @@ resolveBtn.addEventListener('click', () => {
       })();
       newData.steps.push({ row: r, col: c, step: i/2 + 1, value: newData.hexMatrix[r][c], dir });
     }
-    // ���ػ沽��ͱ�ע����������Ŀ����ӵı༭״̬��
+    // 仅重绘步骤和标注（保留矩阵和目标格子的编辑状态）
     updateSolutionDisplay(newData);
   } else {
-    alert('�༭��ľ���?Ŀ���޽⣬���������Ƿ���??);
+    alert('编辑后的矩阵/目标无解，请检查输入是否正确');
   }
 });
+
 function updateSolutionDisplay(data) {
-  // ���²����б�
+  // 更新步骤列表
   stepsList.innerHTML = '';
   if (data.solved && data.steps.length) {
     for (const s of data.steps) {
@@ -841,59 +864,66 @@ function updateSolutionDisplay(data) {
       chip.className = 'step-chip';
       const num = document.createElement('span'); num.className = 'num'; num.textContent = s.step;
       chip.appendChild(num);
-      const dirSymbol = { 'right':'??, 'left':'??, 'down':'??, 'up':'??, '':'' }[s.dir] || '';
+      const dirSymbol = { 'right':'→', 'left':'←', 'down':'↓', 'up':'↑', '':'' }[s.dir] || '';
       chip.appendChild(document.createTextNode(dirSymbol + ' (' + (s.row+1) + ',' + (s.col+1) + ') [' + s.value + ']'));
       stepsList.appendChild(chip);
     }
   } else {
-    stepsList.innerHTML = '<div style="color:#f44">δ�ҵ���ƥ������Ŀ���·��?/div>';
+    stepsList.innerHTML = '<div style="color:#f44">未找到能匹配所有目标的路径</div>';
   }
-  // ���±�ע
+  // 更新标注
   annotateImage(data);
-  // ����ƥ��״??  const tItems = targetsEl.querySelectorAll('.target-item');
+  // 更新匹配状态
+  const tItems = targetsEl.querySelectorAll('.target-item');
   tItems.forEach((item, i) => {
     item.classList.toggle('matched', data.matchedTargets.includes(i));
     const st = item.querySelector('.status');
-    if (st) { st.textContent = data.matchedTargets.includes(i) ? '?? : '??; st.className = 'status ' + (data.matchedTargets.includes(i) ? 'ok' : 'fail'); }
+    if (st) { st.textContent = data.matchedTargets.includes(i) ? '✓' : '✗'; st.className = 'status ' + (data.matchedTargets.includes(i) ? 'ok' : 'fail'); }
   });
 }
+
 function showResult(data) {
   resultDiv.style.display = 'block';
   lastResult = data;
   resolveBtn.style.display = 'block';
   templateBar.style.display = 'block';
-  // ��Ϣ??  infoBar.innerHTML = '';
-  addBadge(infoBar, '����', data.matrixSize);
-  addBadge(infoBar, 'Ŀ��', data.targets.length + ' ??);
-  addBadge(infoBar, data.solved ? '&#10003; �ѽ�' : '&#10007; δ��', '');
-  // ����??  if (data.debugImages && data.debugImages.matrix) {
+  templateStatus.textContent = '模板: ' + TemplateDB.size + ' 个字符';
+  // 信息栏
+  infoBar.innerHTML = '';
+  addBadge(infoBar, '矩阵', data.matrixSize);
+  addBadge(infoBar, '目标', data.targets.length + ' 条');
+  addBadge(infoBar, data.solved ? '&#10003; 已解' : '&#10007; 未解', '');
+
+  // 调试图
+  if (data.debugImages && data.debugImages.matrix) {
     debugSection.style.display = 'block';
     debugMatrix.src = data.debugImages.matrix;
     debugTargets.src = data.debugImages.targets;
-    rawMatrixText.textContent = data.rawMatrixText || '(����??';
-    rawTargetsText.textContent = data.rawTargetsText || '(����??';
+    rawMatrixText.textContent = data.rawMatrixText || '(无输出)';
+    rawTargetsText.textContent = data.rawTargetsText || '(无输出)';
   } else {
     debugSection.style.display = 'none';
   }
-  // ����
+
+  // 矩阵
   grid.style.gridTemplateColumns = 'repeat(' + (data.hexMatrix[0]?.length || 4) + ', 64px)';
   grid.innerHTML = '';
   const stepMap = {};
   for (const s of data.steps) stepMap[s.row + ',' + s.col] = s;
-  // ����ÿ�����ӵ��¸����ӵķ���
+  // 计算每个格子到下个格子的方向
   const nextDirMap = {};
   for (let i = 0; i < data.steps.length - 1; i++) {
     const cur = data.steps[i], next = data.steps[i + 1];
     let dir = '';
-    if (next.row === cur.row && next.col > cur.col) dir = '??;
-    else if (next.row === cur.row && next.col < cur.col) dir = '??;
-    else if (next.col === cur.col && next.row > cur.row) dir = '??;
-    else if (next.col === cur.col && next.row < cur.row) dir = '??;
+    if (next.row === cur.row && next.col > cur.col) dir = '→';
+    else if (next.row === cur.row && next.col < cur.col) dir = '←';
+    else if (next.col === cur.col && next.row > cur.row) dir = '↓';
+    else if (next.col === cur.col && next.row < cur.row) dir = '↑';
     nextDirMap[cur.row + ',' + cur.col] = dir;
   }
   if (data.steps.length > 0) {
     const last = data.steps[data.steps.length - 1];
-    nextDirMap[last.row + ',' + last.col] = '??;
+    nextDirMap[last.row + ',' + last.col] = '◆';
   }
   for (let r = 0; r < data.hexMatrix.length; r++) {
     for (let c = 0; c < data.hexMatrix[r].length; c++) {
@@ -901,7 +931,8 @@ function showResult(data) {
       cell.className = 'cell';
       const step = stepMap[r + ',' + c];
       if (step) {
-        // ·������ʾ��Ų�����?+ �����ͷ��hex ֵ��С����ʾ�ڵ�??        cell.classList.add('step-highlight');
+        // 路径格：显示大号步骤编号 + 方向箭头，hex 值以小字显示在底部
+        cell.classList.add('step-highlight');
         const stepNum = document.createElement('div');
         stepNum.className = 'step-num';
         stepNum.textContent = step.step;
@@ -909,11 +940,11 @@ function showResult(data) {
         const nd = nextDirMap[r + ',' + c];
         if (nd) {
           const arrow = document.createElement('div');
-          arrow.className = 'dir-arrow' + (nd === '?? ? ' end' : '');
+          arrow.className = 'dir-arrow' + (nd === '◆' ? ' end' : '');
           arrow.textContent = nd;
           cell.appendChild(arrow);
         }
-        // С�� hex ֵ���ɱ༭��
+        // 小字 hex 值（可编辑）
         const hexSmall = document.createElement('div');
         hexSmall.className = 'hex-small';
         hexSmall.contentEditable = true;
@@ -926,16 +957,17 @@ function showResult(data) {
       grid.appendChild(cell);
     }
   }
-  // Ŀ�����У��ɱ༭??  targetsEl.innerHTML = '';
+  // 目标序列（可编辑）
+  targetsEl.innerHTML = '';
   for (let i = 0; i < data.hexTargets.length; i++) {
     const item = document.createElement('div');
     item.className = 'target-item';
     if (data.matchedTargets.includes(i)) item.classList.add('matched');
-    item.innerHTML = 'Ŀ��' + (i+1) + ': <strong class="target-val" contenteditable>' + data.hexTargets[i].join(' ') + '</strong>' +
-      '<span class="status ' + (data.matchedTargets.includes(i) ? 'ok' : 'fail') + '">' + (data.matchedTargets.includes(i) ? '?? : '??) + '</span>';
+    item.innerHTML = '目标' + (i+1) + ': <strong class="target-val" contenteditable>' + data.hexTargets[i].join(' ') + '</strong>' +
+      '<span class="status ' + (data.matchedTargets.includes(i) ? 'ok' : 'fail') + '">' + (data.matchedTargets.includes(i) ? '✓' : '✗') + '</span>';
     targetsEl.appendChild(item);
   }
-  // ����
+  // 步骤
   stepsList.innerHTML = '';
   if (data.solved && data.steps.length) {
     for (const s of data.steps) {
@@ -943,17 +975,18 @@ function showResult(data) {
       chip.className = 'step-chip';
       const num = document.createElement('span'); num.className = 'num'; num.textContent = s.step;
       chip.appendChild(num);
-      const dirSymbol = { 'right':'??, 'left':'??, 'down':'??, 'up':'??, '':'' }[s.dir] || '';
+      const dirSymbol = { 'right':'→', 'left':'←', 'down':'↓', 'up':'↑', '':'' }[s.dir] || '';
       chip.appendChild(document.createTextNode(dirSymbol + ' (' + (s.row+1) + ',' + (s.col+1) + ') [' + s.value + ']'));
       stepsList.appendChild(chip);
     }
   } else {
-    stepsList.innerHTML = '<div style="color:#f44">δ�ҵ���ƥ������Ŀ���·��?/div>';
+    stepsList.innerHTML = '<div style="color:#f44">未找到能匹配所有目标的路径</div>';
   }
-  // �ڽ�ͼ�ϱ�ע·��
+  // 在截图上标注路径
   annotateImage(data);
 }
-// ====== �ڽ�ͼ�����ϵ��ӱ�ע·�� ======
+
+// ====== 在截图矩阵上叠加标注路径 ======
 function annotateImage(data) {
   const canvas = document.getElementById('annoCanvas');
   if (!data.solved || !data.steps.length) { canvas.style.display = 'none'; return; }
@@ -962,10 +995,11 @@ function annotateImage(data) {
   const cols = data.hexMatrix[0].length;
   const cellW = crop.w / cols;
   const cellH = crop.h / rows;
-  // ���� canvas �ߴ�Ϊԭʼͼ��ֱ��ʣ�CSS ����ƥ����ʾ??  canvas.width = imgNaturalW;
+  // 设置 canvas 尺寸为原始图像分辨率（CSS 缩放匹配显示）
+  canvas.width = imgNaturalW;
   canvas.height = imgNaturalH;
   const ctx = canvas.getContext('2d');
-  // �������ߣ��ӵ�һ���������ڶ�����ָ����һ�����ߣ�
+  // 画连接线（从第一步到倒数第二步画指向下一步的线）
   for (let i = 0; i < data.steps.length - 1; i++) {
     const s = data.steps[i], ns = data.steps[i + 1];
     const x1 = crop.x + s.col * cellW + cellW / 2;
@@ -978,7 +1012,8 @@ function annotateImage(data) {
     ctx.strokeStyle = '#00ff00';
     ctx.lineWidth = 4;
     ctx.stroke();
-    // ��ͷͷ����������??    const angle = Math.atan2(y2 - y1, x2 - x1);
+    // 箭头头部（三角形）
+    const angle = Math.atan2(y2 - y1, x2 - x1);
     const headLen = 14;
     ctx.beginPath();
     ctx.moveTo(x2, y2);
@@ -988,18 +1023,19 @@ function annotateImage(data) {
     ctx.fillStyle = '#00ff00';
     ctx.fill();
   }
-  // ��ÿ�������Բ��?+ ���?
+  // 画每个步骤的圆点 + 编号
   for (const s of data.steps) {
     const cx = crop.x + s.col * cellW + cellW / 2;
     const cy = crop.y + s.row * cellH + cellH / 2;
-    // �ⷢ??    ctx.beginPath();
+    // 外发光
+    ctx.beginPath();
     ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
     ctx.fillStyle = 'rgba(0, 255, 0, 0.25)';
     ctx.fill();
     ctx.strokeStyle = '#00ff00';
     ctx.lineWidth = 3;
     ctx.stroke();
-    // ���?
+    // 编号
     ctx.fillStyle = '#00ff00';
     ctx.font = 'bold 22px "Courier New", monospace';
     ctx.textAlign = 'center';
@@ -1010,18 +1046,21 @@ function annotateImage(data) {
     ctx.shadowBlur = 0;
   }
   canvas.style.display = 'block';
-  // ���زü�??  matrixRect.style.display = 'none';
+  // 隐藏裁剪框
+  matrixRect.style.display = 'none';
   targetsRect.style.display = 'none';
 }
+
 function addBadge(parent, label, value) {
   const b = document.createElement('div');
   b.className = 'badge';
   b.innerHTML = '<strong>' + label + '</strong>' + (value ? ' ' + value : '');
   parent.appendChild(b);
 }
-function showLoading(text) { loading.style.display = 'block'; loadingText.textContent = text || '����ʶ��...'; }
+function showLoading(text) { loading.style.display = 'block'; loadingText.textContent = text || '正在识别...'; }
 function hideLoading() { loading.style.display = 'none'; }
 function showError(msg) { errorArea.textContent = msg; errorArea.style.display = 'block'; resultDiv.style.display = 'block'; document.getElementById('annoCanvas').style.display = 'none'; matrixRect.style.display = ''; targetsRect.style.display = ''; }
+
 restartBtn.addEventListener('click', resetAll);
 function resetAll() {
   currentImage = null;
@@ -1036,7 +1075,6 @@ function resetAll() {
   resolveBtn.style.display = 'none';
   lastResult = null;
 }
-// 保存模板
 
 // 保存模板
 saveTemplatesBtn.addEventListener('click', () => {
@@ -1055,7 +1093,6 @@ clearTemplatesBtn.addEventListener('click', () => {
     templateStatus.textContent = '模板: 0 个字符';
   }
 });
-
 </script>
 </body>
 </html>
