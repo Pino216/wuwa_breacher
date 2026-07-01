@@ -327,9 +327,12 @@ const TemplateDB = {
     const c = document.createElement('canvas'); c.width = TMPL_SIZE; c.height = TMPL_SIZE;
     const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
     x.drawImage(cvs, 0, 0, TMPL_SIZE, TMPL_SIZE);
-    const d = Array.from(x.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data);
-    if (!this._store[label]) this._store[label] = { data: d, count: 1 };
-    else { const o = this._store[label]; for (let i = 0; i < d.length; i++) o.data[i] = (o.data[i] * o.count + d[i]) / (o.count + 1); o.count++; }
+    const raw = x.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data;
+    // 二值化并只存 R 通道
+    const d = new Uint8Array(TMPL_SIZE * TMPL_SIZE);
+    for (let i = 0, j = 0; i < raw.length; i += 4, j++) d[j] = raw[i] > 127 ? 255 : 0;
+    if (!this._store[label]) this._store[label] = { data: Array.from(d), count: 1 };
+    else { const o = this._store[label]; for (let i = 0; i < d.length; i++) o.data[i] = (o.data[i] * o.count + d[i]) / (o.count + 1); }
     this.saveToStorage();
   },
   saveAll(vals, canvas) {
@@ -345,13 +348,26 @@ const TemplateDB = {
     const c = document.createElement('canvas'); c.width = TMPL_SIZE; c.height = TMPL_SIZE;
     const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
     x.drawImage(cellCanvas, 0, 0, TMPL_SIZE, TMPL_SIZE);
-    const cd = x.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data;
+    const raw = x.getImageData(0, 0, TMPL_SIZE, TMPL_SIZE).data;
+    // 二值化待匹配图像
+    const cd = new Uint8Array(TMPL_SIZE * TMPL_SIZE);
+    for (let i = 0, j = 0; i < raw.length; i += 4, j++) cd[j] = raw[i] > 127 ? 255 : 0;
     let best = null, bs = 0;
     for (const [label, t] of Object.entries(this._store)) {
-      let m = 0; for (let i = 0; i < cd.length; i += 4) if ((cd[i] > 127) === (t.data[i] > 127)) m++;
-      const s = m / (cd.length / 4); if (s > bs) { bs = s; best = label; }
+      const tmplData = t.data;
+      // 兼容旧格式（RGBA 4 通道）和新格式（单通道）
+      const tmplStep = tmplData.length === TMPL_SIZE * TMPL_SIZE ? 1 : 4;
+      let matchDark = 0, totalDark = 0;
+      for (let i = 0, ti = 0; i < cd.length; i++, ti += tmplStep) {
+        const cellDark = cd[i] < 128;
+        const tmplDark = tmplData[ti] < 128;
+        if (cellDark && tmplDark) matchDark++;
+        if (cellDark || tmplDark) totalDark++;
+      }
+      const score = totalDark > 0 ? matchDark / totalDark : 0;
+      if (score > bs) { bs = score; best = label; }
     }
-    return bs >= 0.85 ? { label: best, score: bs } : null;
+    return bs >= 0.7 ? { label: best, score: bs } : null;
   },
   recognize(canvas, rows, cols) {
     if (!Object.keys(this._store).length) return null;
