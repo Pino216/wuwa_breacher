@@ -118,6 +118,13 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
   font-size: 0.55rem; line-height: 1; opacity: 0.65;
   position: absolute; bottom: 2px; right: 3px;
 }
+.cell[contenteditable]:hover { border-color: #ff0; box-shadow: 0 0 8px rgba(255,255,0,0.3); }
+.cell[contenteditable]:focus { outline: none; border-color: #ff0; box-shadow: 0 0 12px rgba(255,255,0,0.5); }
+.hex-small[contenteditable]:hover { opacity: 1; color: #ff0; }
+.hex-small[contenteditable]:focus { outline: none; opacity: 1; color: #ff0; }
+.target-val[contenteditable] { cursor: text; }
+.target-val[contenteditable]:hover { color: #ff0; }
+.target-val[contenteditable]:focus { outline: none; color: #ff0; }
 .targets { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .target-item { background: #0d1a0d; border: 1px solid #0f0; border-radius: 6px; padding: 8px 14px; font-size: 0.9rem; }
 .target-item.matched { border-color: #0f0; background: #0a1a0a; }
@@ -187,6 +194,8 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
     <div class="targets" id="targets"></div>
     <div class="section-title">▸ 点击顺序</div>
     <div class="steps-list" id="stepsList"></div>
+
+    <button id="resolveBtn" class="crop-btn" style="display:none;margin:16px auto">🔄 重新求解</button>
 
     <details id="debugSection" style="margin-top:20px;display:none">
       <summary style="color:#0a0;cursor:pointer;font-size:0.85rem">🔍 调试图（OCR 实际处理的裁剪区域）</summary>
@@ -527,9 +536,11 @@ const copyDebugBtn = document.getElementById('copyDebugBtn');
 const infoBar = document.getElementById('infoBar');
 const errorArea = document.getElementById('errorArea');
 const restartBtn = document.getElementById('restartBtn');
+const resolveBtn = document.getElementById('resolveBtn');
 
 let currentImage = null;
 let imgNaturalW = 0, imgNaturalH = 0;
+let lastResult = null; // 供重新求解使用
 
 // ====== 上传 ======
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
@@ -684,8 +695,100 @@ copyDebugBtn.addEventListener('click', () => {
   });
 });
 
+// 反向映射表：'1C' → '1', 'GO' → 'G' 等
+function buildRevMap() {
+  const m = {};
+  for (const [k, v] of Object.entries(BYTE_MAP)) m[v] = k;
+  return m;
+}
+
+// 读取可编辑格子，重新求解
+resolveBtn.addEventListener('click', () => {
+  if (!lastResult) return;
+  const revMap = buildRevMap();
+  const rows = lastResult.hexMatrix.length;
+  const cols = lastResult.hexMatrix[0].length;
+  const gridCells = grid.children;
+  // 读取矩阵
+  const newMatrix = [];
+  for (let r = 0; r < rows; r++) {
+    const row = [];
+    for (let c = 0; c < cols; c++) {
+      const el = gridCells[r * cols + c];
+      // 路径格的值在 .hex-small 里，非路径格在 textContent
+      const val = (el.querySelector('.hex-small')?.textContent || el.textContent).trim().toUpperCase();
+      row.push(revMap[val] || val[0] || '?');
+    }
+    newMatrix.push(row);
+  }
+  // 读取目标序列
+  const newTargets = [];
+  for (const item of targetsEl.querySelectorAll('.target-item')) {
+    const strong = item.querySelector('.target-val');
+    if (!strong) continue;
+    const parts = strong.textContent.trim().split(/\s+/).filter(Boolean);
+    newTargets.push(parts.map(v => revMap[v] || v[0] || '?'));
+  }
+  // 求解
+  let bestSolution = null, bestBuf = 0;
+  for (const buf of [2, 3, 4, 5, 6, 7, 8, 9]) {
+    const solutions = solveWuthering(newMatrix, newTargets, buf);
+    if (solutions.length === 0) continue;
+    if (solutions[0].mi.length === newTargets.length) { bestSolution = solutions[0]; bestBuf = buf; break; }
+  }
+  // 更新路径和步骤显示
+  if (bestSolution) {
+    const newData = Object.assign({}, lastResult, {
+      matrix: newMatrix, targets: newTargets, solved: true, buffer: bestBuf,
+      path: [], steps: [], matchedTargets: bestSolution.mi,
+    });
+    for (let i = 0; i < bestSolution.seq.length; i += 2) {
+      const r = parseInt(bestSolution.seq[i]), c = parseInt(bestSolution.seq[i+1]);
+      newData.path.push(newData.hexMatrix[r][c]);
+      const dir = i === 0 ? '' : (() => {
+        const pr = parseInt(bestSolution.seq[i-2]), pc = parseInt(bestSolution.seq[i-1]);
+        return r === pr ? (c > pc ? 'right' : 'left') : (r > pr ? 'down' : 'up');
+      })();
+      newData.steps.push({ row: r, col: c, step: i/2 + 1, value: newData.hexMatrix[r][c], dir });
+    }
+    // 仅重绘步骤和标注（保留矩阵和目标格子的编辑状态）
+    updateSolutionDisplay(newData);
+  } else {
+    alert('编辑后的矩阵/目标无解，请检查输入是否正确');
+  }
+});
+
+function updateSolutionDisplay(data) {
+  // 更新步骤列表
+  stepsList.innerHTML = '';
+  if (data.solved && data.steps.length) {
+    for (const s of data.steps) {
+      const chip = document.createElement('div');
+      chip.className = 'step-chip';
+      const num = document.createElement('span'); num.className = 'num'; num.textContent = s.step;
+      chip.appendChild(num);
+      const dirSymbol = { 'right':'→', 'left':'←', 'down':'↓', 'up':'↑', '':'' }[s.dir] || '';
+      chip.appendChild(document.createTextNode(dirSymbol + ' (' + (s.row+1) + ',' + (s.col+1) + ') [' + s.value + ']'));
+      stepsList.appendChild(chip);
+    }
+  } else {
+    stepsList.innerHTML = '<div style="color:#f44">未找到能匹配所有目标的路径</div>';
+  }
+  // 更新标注
+  annotateImage(data);
+  // 更新匹配状态
+  const tItems = targetsEl.querySelectorAll('.target-item');
+  tItems.forEach((item, i) => {
+    item.classList.toggle('matched', data.matchedTargets.includes(i));
+    const st = item.querySelector('.status');
+    if (st) { st.textContent = data.matchedTargets.includes(i) ? '✓' : '✗'; st.className = 'status ' + (data.matchedTargets.includes(i) ? 'ok' : 'fail'); }
+  });
+}
+
 function showResult(data) {
   resultDiv.style.display = 'block';
+  lastResult = data;
+  resolveBtn.style.display = 'block';
   // 信息栏
   infoBar.innerHTML = '';
   addBadge(infoBar, '矩阵', data.matrixSize);
@@ -742,24 +845,26 @@ function showResult(data) {
           arrow.textContent = nd;
           cell.appendChild(arrow);
         }
-        // 小字 hex 值
+        // 小字 hex 值（可编辑）
         const hexSmall = document.createElement('div');
         hexSmall.className = 'hex-small';
+        hexSmall.contentEditable = true;
         hexSmall.textContent = data.hexMatrix[r][c] || '??';
         cell.appendChild(hexSmall);
       } else {
+        cell.contentEditable = true;
         cell.textContent = data.hexMatrix[r][c] || '??';
       }
       grid.appendChild(cell);
     }
   }
-  // 目标序列
+  // 目标序列（可编辑）
   targetsEl.innerHTML = '';
   for (let i = 0; i < data.hexTargets.length; i++) {
     const item = document.createElement('div');
     item.className = 'target-item';
     if (data.matchedTargets.includes(i)) item.classList.add('matched');
-    item.innerHTML = '目标' + (i+1) + ': <strong>' + data.hexTargets[i].join(' ') + '</strong>' +
+    item.innerHTML = '目标' + (i+1) + ': <strong class="target-val" contenteditable>' + data.hexTargets[i].join(' ') + '</strong>' +
       '<span class="status ' + (data.matchedTargets.includes(i) ? 'ok' : 'fail') + '">' + (data.matchedTargets.includes(i) ? '✓' : '✗') + '</span>';
     targetsEl.appendChild(item);
   }
@@ -868,6 +973,8 @@ function resetAll() {
   document.getElementById('annoCanvas').style.display = 'none';
   matrixRect.style.display = '';
   targetsRect.style.display = '';
+  resolveBtn.style.display = 'none';
+  lastResult = null;
 }
 </script>
 </body>
