@@ -352,14 +352,23 @@ const TemplateDB = {
     // 二值化待匹配图像
     const cd = new Uint8Array(TMPL_SIZE * TMPL_SIZE);
     for (let i = 0, j = 0; i < raw.length; i += 4, j++) cd[j] = raw[i] > 127 ? 255 : 0;
+    // 膨胀 1 像素：让细笔画对偏移更鲁棒
+    const dilated = new Uint8Array(cd);
+    for (let y = 0; y < TMPL_SIZE; y++) for (let x = 0; x < TMPL_SIZE; x++) {
+      if (cd[y * TMPL_SIZE + x] < 128) {
+        if (y > 0) dilated[(y-1)*TMPL_SIZE + x] = 0;
+        if (y < TMPL_SIZE-1) dilated[(y+1)*TMPL_SIZE + x] = 0;
+        if (x > 0) dilated[y*TMPL_SIZE + (x-1)] = 0;
+        if (x < TMPL_SIZE-1) dilated[y*TMPL_SIZE + (x+1)] = 0;
+      }
+    }
     let best = null, bs = 0;
     for (const [label, t] of Object.entries(this._store)) {
       const tmplData = t.data;
-      // 兼容旧格式（RGBA 4 通道）和新格式（单通道）
       const tmplStep = tmplData.length === TMPL_SIZE * TMPL_SIZE ? 1 : 4;
       let matchDark = 0, totalDark = 0;
-      for (let i = 0, ti = 0; i < cd.length; i++, ti += tmplStep) {
-        const cellDark = cd[i] < 128;
+      for (let i = 0, ti = 0; i < dilated.length; i++, ti += tmplStep) {
+        const cellDark = dilated[i] < 128;
         const tmplDark = tmplData[ti] < 128;
         if (cellDark && tmplDark) matchDark++;
         if (cellDark || tmplDark) totalDark++;
@@ -367,7 +376,7 @@ const TemplateDB = {
       const score = totalDark > 0 ? matchDark / totalDark : 0;
       if (score > bs) { bs = score; best = label; }
     }
-    return bs >= 0.55 ? { label: best, score: bs } : null;
+    return bs >= 0.4 ? { label: best, score: bs } : null;
   },
   recognize(canvas, rows, cols) {
     if (!Object.keys(this._store).length) return null;
