@@ -217,7 +217,7 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
       <button id="saveTemplatesBtn" class="crop-btn" style="padding:4px 14px;font-size:0.8rem;margin-left:8px">💾 保存模板</button>
       <button id="clearTemplatesBtn" style="padding:4px 10px;background:transparent;border:1px solid #600;border-radius:4px;color:#a00;font-family:inherit;font-size:0.7rem;margin-left:4px;cursor:pointer">清除</button>
       <label style="color:#0a0;margin-left:10px;cursor:pointer">
-        <input type="checkbox" id="tmplModeCheck"> 模板模式
+        <input type="checkbox" id="tmplModeCheck" checked> 模板模式
       </label>
       <button id="exportTemplatesBtn" style="padding:4px 10px;background:transparent;border:1px solid #080;border-radius:4px;color:#0a0;font-family:inherit;font-size:0.7rem;margin-left:4px;cursor:pointer">导出模板</button>
     </div>
@@ -541,12 +541,20 @@ async function runPipeline(imageDataUrl, crops) {
   if (tmplModeCheck && tmplModeCheck.checked && TemplateDB.size > 0) {
     const guessRows = 5, guessCols = 5;
     const tmplRows = TemplateDB.recognize(matrixProc, guessRows, guessCols);
-    const validRows = tmplRows.filter(r => r.filter(c => c !== null).length > 0);
-    const cc = {}; for (const r of validRows) { const n = r.filter(c => c !== null).length; cc[n] = (cc[n] || 0) + 1; }
-    const best = Object.entries(cc).sort((a, b) => b[1] - a[1])[0];
-    const actualCols = best ? parseInt(best[0]) : guessCols;
-    const clean = []; for (const r of validRows) { const nn = r.filter(c => c !== null); if (nn.length === actualCols) clean.push(nn); }
-    matrixResult = { rows: clean, rawText: '(template match)' };
+    if (tmplRows) {
+      const validRows = tmplRows.filter(r => r.filter(c => c !== null).length > 0);
+      const cc = {}; for (const r of validRows) { const n = r.filter(c => c !== null).length; cc[n] = (cc[n] || 0) + 1; }
+      const best = Object.entries(cc).sort((a, b) => b[1] - a[1])[0];
+      const actualCols = best ? parseInt(best[0]) : guessCols;
+      const clean = []; for (const r of validRows) { const nn = r.filter(c => c !== null); if (nn.length === actualCols) clean.push(nn); }
+      if (clean.length >= 2) {
+        matrixResult = { rows: clean, rawText: '(template match)' };
+      } else {
+        matrixResult = await ocrCanvas(worker, matrixProc);
+      }
+    } else {
+      matrixResult = await ocrCanvas(worker, matrixProc);
+    }
   } else {
     matrixResult = await ocrCanvas(worker, matrixProc);
   }
