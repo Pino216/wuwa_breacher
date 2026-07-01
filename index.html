@@ -160,6 +160,22 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
     <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg" style="display:none">
   </div>
 
+  <div class="features" style="margin-bottom:20px;padding:16px;background:#0d1a0d;border:1px solid #0a0;border-radius:8px;font-size:0.85rem;line-height:1.6">
+    <div style="color:#0f0;font-weight:bold;margin-bottom:8px">▸ 功能说明</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">
+      <div>① 上传截图（拖拽 / Ctrl+V / 点击选择）</div>
+      <div>② 拖动绿色框选中矩阵区域</div>
+      <div>③ 拖动蓝色框选中目标序列区域</div>
+      <div>④ 点击 SOLVE 自动识别并求解</div>
+      <div>⑤ 格子内直接修改识别错误的值</div>
+      <div>⑥ 勾选「模板模式」加速后续识别</div>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #0a0;display:flex;gap:16px;flex-wrap:wrap;font-size:0.75rem;color:#080">
+      <span>内置模板: <span id="tmplCountInit">加载中...</span> 个字符</span>
+      <span>支持 6 种 hex 值 · 11 种字母码 · 3 种单字符码</span>
+    </div>
+  </div>
+
   <!-- 裁剪区域 -->
   <div class="crop-area" id="cropArea">
     <div class="crop-hint">🟢 拖动绿色框选中矩阵区域  ·  🔵 拖动蓝色框选中目标序列区域</div>
@@ -354,6 +370,9 @@ const TemplateDB = {
   clear() { this._store = {}; this.saveToStorage(); }
 };
 TemplateDB.loadFromStorage();
+// 显示内置模板数量
+const tc = document.getElementById('tmplCountInit');
+if (tc) tc.textContent = TemplateDB.size;
 
 // ====== 求解器 ======
 function sequencesToString(seqs, matrix) {
