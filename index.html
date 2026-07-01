@@ -200,6 +200,20 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
           <img id="debugTargets" style="width:100%;border:1px solid #0ff;border-radius:4px">
         </div>
       </div>
+      <div style="margin-top:12px;border-top:1px solid #0a0;padding-top:10px">
+        <div style="font-size:0.8rem;color:#0a0;margin-bottom:6px">Tesseract 原始输出（cleanToken 之前）</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:0.7rem;color:#0f0;margin-bottom:2px">矩阵区</div>
+            <pre id="rawMatrixText" style="background:#0a0a0a;border:1px solid #0a0;border-radius:4px;padding:8px;font-size:0.75rem;color:#0f0;white-space:pre-wrap;margin:0;min-height:40px"></pre>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:0.7rem;color:#0ff;margin-bottom:2px">目标区</div>
+            <pre id="rawTargetsText" style="background:#0a0a0a;border:1px solid #0a0;border-radius:4px;padding:8px;font-size:0.75rem;color:#0ff;white-space:pre-wrap;margin:0;min-height:40px"></pre>
+          </div>
+        </div>
+        <button id="copyDebugBtn" style="margin-top:8px;padding:6px 16px;background:transparent;border:1px solid #0a0;border-radius:4px;color:#0a0;font-family:inherit;font-size:0.75rem;cursor:pointer">📋 复制调试信息</button>
+      </div>
     </details>
 
     <button id="restartBtn" class="restart-btn">RESTART</button>
@@ -215,11 +229,11 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
 // ===================================================================
 
 // ====== 配置 ======
-const BYTE_MAP = { '1':'1C', '5':'55', '7':'7A', 'B':'BD', 'E':'E9', 'F':'FF' };
-const VALID_BYTES = ['1C','55','7A','BD','E9','FF'];
-const CHAR_MAP = { '1':'1', '5':'5', '7':'7', 'B':'B', 'E':'E', 'F':'F' };
+const BYTE_MAP = { '1':'1C', '5':'55', '7':'7A', 'B':'BD', 'E':'E9', 'F':'FF', 'G':'GO', 'M':'MO', 'O':'OD', 'N':'IN', 'R':'RN', 'S':'GS', 'L':'OL', 'T':'IS', 'A':'AR' };
+const VALID_BYTES = ['1C','55','7A','BD','E9','FF','GO','MO','OD','IN','RN','GS','OL','IS','AR'];
+const CHAR_MAP = { '1':'1', '5':'5', '7':'7', 'B':'B', 'E':'E', 'F':'F', 'G':'G', 'M':'M', 'O':'O', 'N':'N', 'R':'R', 'S':'S', 'L':'L', 'T':'T', 'A':'A' };
 const CHAR_FIX = { 'I':'1', 'L':'1', 'S':'5', 'G':'5', 'O':'0', '0':'B', '8':'B', '3':'B', '€':'E' };
-const KNOWN_FIX = { 'AD':'1', 'IC':'1', 'LC':'1', 'LE':'1', 'TA':'7', '3D':'B', '8D':'B', 'DB':'B', 'BB':'B', '21D':'B', '2D':'B', 'E€':'E', 'FFE':'F', 'Ff':'F' };
+const KNOWN_FIX = { 'AD':'1', 'IC':'1', 'LC':'1', 'LE':'1', 'TA':'7', '3D':'B', '8D':'B', 'DB':'B', 'BB':'B', '21D':'B', '2D':'B', 'E€':'E', 'FFE':'F', 'Ff':'F', 'GO':'G', 'MO':'M', 'OD':'O', 'IN':'N', 'RN':'R', 'GS':'S', 'OL':'L', 'IS':'T', 'AR':'A', '0D':'O', 'M0':'M', '0L':'O', 'G0':'G', '0A':'A', 'R0':'R', 'OB':'O' };
 
 function levenshtein(a, b) {
   const m = []; for (let i = 0; i <= a.length; i++) { m[i] = [i]; for (let j = 1; j <= b.length; j++) m[i][j] = i === 0 ? j : 0; }
@@ -268,7 +282,7 @@ function getSequences({ bufferSize, orientation, index, used, matrix, targets })
     const tStrs = targets.map(t => t.join(''));
     const filtered = init.filter((_s,i) => tStrs.some(ts => strs[i].includes(ts)));
     const res = [];
-    for (const seq of filtered) { const sub = getSequences({ bufferSize: bufferSize-6, orientation:'row', index: seq[10], used: new Set(seq.match(/.{1,2}/g)), matrix, targets }); for (const s of sub) res.push(seq + s); }
+    for (const seq of filtered) { const sub = getSequences({ bufferSize: bufferSize-6, orientation:'col', index: seq[11], used: new Set(seq.match(/.{1,2}/g)), matrix, targets }); for (const s of sub) res.push(seq + s); }
     return res;
   }
   return init;
@@ -291,7 +305,7 @@ function solveWuthering(matrix, targets, buf) {
     const nxt = []; for (let i = 0; i < n; i++) { const p = ori==='row'?idx+i:i+idx; if (!used.has(p)) nxt.push(p); }
     if (bs === 1) return nxt;
     const init = []; for (const rc of nxt) { const s = ss(Math.min(bs,6)-1, ori==='row'?'col':'row', ori==='row'?rc[1]:rc[0], new Set(used).add(rc)); for (const x of s) init.push(rc + x); }
-    if (bs > 6) { const strs = sequencesToString(init, matrix); const ts = targets.map(t=>t.join('')); const f = init.filter((s,i)=>ts.some(t=>strs[i].includes(t))); const r = []; for (const seq of f) { const s = ss(bs-6,'row',seq[10],new Set(seq.match(/.{1,2}/g))); for (const x of s) r.push(seq + x); } return r; }
+    if (bs > 6) { const strs = sequencesToString(init, matrix); const ts = targets.map(t=>t.join('')); const f = init.filter((s,i)=>ts.some(t=>strs[i].includes(t))); const r = []; for (const seq of f) { const s = ss(bs-6,'col',seq[11],new Set(seq.match(/.{1,2}/g))); for (const x of s) r.push(seq + x); } return r; }
     return init;
   }
   for (let c = 0; c < n; c++) { if (buf === 1) { all.push('0'+c); continue; } const s = ss(buf-1, 'col', ''+c, new Set(['0'+c])); for (const x of s) all.push('0'+c + x); }
@@ -338,14 +352,15 @@ function canvasToDataURL(cvs) {
 // ====== OCR ======
 async function ocrCanvas(worker, cvs) {
   const { data: { text } } = await worker.recognize(cvs);
-  const lines = text.trim().split('\n').filter(l => l.trim());
+  const rawText = text.trim();
+  const lines = rawText.split('\n').filter(l => l.trim());
   const result = [];
   for (const line of lines) {
     const tokens = line.trim().split(/[\s|_()\u201c\u201d\u2018\u2019`'";:!?\[\]{}]+/).filter(t => t.length > 0);
     const row = tokens.map(cleanToken).filter(t => t !== null);
     if (row.length > 0) result.push(row);
   }
-  return result;
+  return { rows: result, rawText };
 }
 
 // ====== 管线 ======
@@ -410,18 +425,18 @@ async function runPipeline(imageDataUrl, crops) {
   // OCR
   const worker = await Tesseract.createWorker('eng');
   await worker.setParameters({ tessedit_pageseg_mode: '6' }); // PSM.SINGLE_BLOCK
-  const matrixRows = await ocrCanvas(worker, matrixProc);
-  const targetRows = await ocrCanvas(worker, targetProc);
+  const matrixResult = await ocrCanvas(worker, matrixProc);
+  const targetResult = await ocrCanvas(worker, targetProc);
   await worker.terminate();
 
   // 结果对象
-  const result = { matrix: [], targets: [], solved: false, buffer: 0, path: [], steps: [], matchedTargets: [], matrixSize: '', error: null, hexMatrix: [], hexTargets: [], debugImages };
+  const result = { matrix: [], targets: [], solved: false, buffer: 0, path: [], steps: [], matchedTargets: [], matrixSize: '', error: null, hexMatrix: [], hexTargets: [], debugImages, rawMatrixText: matrixResult.rawText, rawTargetsText: targetResult.rawText };
 
-  let validMatrixRows = matrixRows.filter(r => r.length >= 3 && r.length <= 9);
-  const validTargetRows = targetRows.filter(r => r.length >= 2 && r.length <= 6);
+  let validMatrixRows = matrixResult.rows.filter(r => r.length >= 3 && r.length <= 9);
+  const validTargetRows = targetResult.rows.filter(r => r.length >= 2 && r.length <= 6);
 
-  if (validMatrixRows.length < 2 && matrixRows.some(r => r.length >= 2)) {
-    validMatrixRows = matrixRows.filter(r => r.length >= 2 && r.length <= 10);
+  if (validMatrixRows.length < 2 && matrixResult.rows.some(r => r.length >= 2)) {
+    validMatrixRows = matrixResult.rows.filter(r => r.length >= 2 && r.length <= 10);
   }
   if (validMatrixRows.length < 2) { result.error = '矩阵行数不足 (' + validMatrixRows.length + ' 行)'; return result; }
 
@@ -467,7 +482,7 @@ async function runPipeline(imageDataUrl, crops) {
 
   // 求解
   let bestSolution = null, bestBuf = 0;
-  for (const buf of [5, 6, 7, 8]) {
+  for (const buf of [2, 3, 4, 5, 6, 7, 8, 9]) {
     const solutions = solveWuthering(result.matrix, result.targets, buf);
     if (solutions.length === 0) continue;
     if (solutions[0].mi.length === result.targets.length) { bestSolution = solutions[0]; bestBuf = buf; break; }
@@ -506,6 +521,9 @@ const stepsList = document.getElementById('stepsList');
 const debugSection = document.getElementById('debugSection');
 const debugMatrix = document.getElementById('debugMatrix');
 const debugTargets = document.getElementById('debugTargets');
+const rawMatrixText = document.getElementById('rawMatrixText');
+const rawTargetsText = document.getElementById('rawTargetsText');
+const copyDebugBtn = document.getElementById('copyDebugBtn');
 const infoBar = document.getElementById('infoBar');
 const errorArea = document.getElementById('errorArea');
 const restartBtn = document.getElementById('restartBtn');
@@ -649,6 +667,23 @@ solveBtn.addEventListener('click', () => {
   solveWithCrops({ matrix: getRect(matrixRect), targets: getRect(targetsRect) });
 });
 
+// 复制调试信息
+copyDebugBtn.addEventListener('click', () => {
+  const txt = '=== 矩阵区 OCR 原始输出 ===\n' + (rawMatrixText.textContent || '') +
+    '\n\n=== 目标区 OCR 原始输出 ===\n' + (rawTargetsText.textContent || '');
+  navigator.clipboard.writeText(txt).then(() => {
+    copyDebugBtn.textContent = '✅ 已复制';
+    setTimeout(() => { copyDebugBtn.textContent = '📋 复制调试信息'; }, 2000);
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    copyDebugBtn.textContent = '✅ 已复制';
+    setTimeout(() => { copyDebugBtn.textContent = '📋 复制调试信息'; }, 2000);
+  });
+});
+
 function showResult(data) {
   resultDiv.style.display = 'block';
   // 信息栏
@@ -662,6 +697,8 @@ function showResult(data) {
     debugSection.style.display = 'block';
     debugMatrix.src = data.debugImages.matrix;
     debugTargets.src = data.debugImages.targets;
+    rawMatrixText.textContent = data.rawMatrixText || '(无输出)';
+    rawTargetsText.textContent = data.rawTargetsText || '(无输出)';
   } else {
     debugSection.style.display = 'none';
   }
