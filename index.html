@@ -203,6 +203,7 @@ h1 { margin: 24px 0 8px; font-size: 1.4rem; letter-spacing: 3px; text-shadow: 0 
       <label style="color:#0a0;margin-left:10px;cursor:pointer">
         <input type="checkbox" id="tmplModeCheck"> 模板模式
       </label>
+      <button id="exportTemplatesBtn" style="padding:4px 10px;background:transparent;border:1px solid #080;border-radius:4px;color:#0a0;font-family:inherit;font-size:0.7rem;margin-left:4px;cursor:pointer">导出模板</button>
     </div>
 
     <details id="debugSection" style="margin-top:20px;display:none">
@@ -347,7 +348,8 @@ const TemplateDB = {
     return result;
   },
   saveToStorage() { try { localStorage.setItem('wt', JSON.stringify(this._store)); } catch (e) {} },
-  loadFromStorage() { try { const d = localStorage.getItem('wt'); if (d) this._store = JSON.parse(d); } catch (e) {} },
+  loadFromStorage() { try { const d = localStorage.getItem('wt'); if (d) { this._store = JSON.parse(d); return; } } catch (e) {} /* 无本地模板 → 尝试加载内置模板 */ this.loadBuiltin(); },
+  loadBuiltin() { try { const r = new XMLHttpRequest(); r.open('GET', 'templates.json', false); r.send(); if (r.status === 200) { this._store = JSON.parse(r.responseText); } } catch (e) {} },
   get size() { return Object.keys(this._store).length; },
   clear() { this._store = {}; this.saveToStorage(); }
 };
@@ -633,6 +635,7 @@ const restartBtn = document.getElementById('restartBtn');
 const resolveBtn = document.getElementById('resolveBtn');
 const saveTemplatesBtn = document.getElementById('saveTemplatesBtn');
 const clearTemplatesBtn = document.getElementById('clearTemplatesBtn');
+const exportTemplatesBtn = document.getElementById('exportTemplatesBtn');
 const tmplModeCheck = document.getElementById('tmplModeCheck');
 const templateBar = document.getElementById('templateBar');
 const templateStatus = document.getElementById('templateStatus');
@@ -1094,6 +1097,14 @@ clearTemplatesBtn.addEventListener('click', () => {
     TemplateDB.clear();
     templateStatus.textContent = '模板: 0 个字符';
   }
+});
+exportTemplatesBtn.addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(TemplateDB._store, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'templates.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 </script>
 </body>
