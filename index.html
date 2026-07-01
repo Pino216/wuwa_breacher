@@ -516,7 +516,23 @@ async function runPipeline(imageDataUrl, crops) {
   // OCR
   const worker = await Tesseract.createWorker('eng');
   await worker.setParameters({ tessedit_pageseg_mode: '6' }); // PSM.SINGLE_BLOCK
-  const matrixResult = await ocrCanvas(worker, matrixProc);
+    // 模板模式：矩阵区用像素匹配替代 Tesseract
+  let matrixResult;
+  const useTmpl = tmplModeCheck && tmplModeCheck.checked && TemplateDB.size > 0;
+  if (useTmpl) {
+    const guessRows = 5, guessCols = 5;
+    const tmplRows = TemplateDB.recognize(matrixProc, guessRows, guessCols);
+    const validRows = tmplRows.filter(r => r.filter(c => c !== null).length > 0);
+    const colCnt = {};
+    for (const r of validRows) { const n = r.filter(c => c !== null).length; colCnt[n] = (colCnt[n]||0)+1; }
+    const best = Object.entries(colCnt).sort((a,b)=>b[1]-a[1])[0];
+    const actualCols = best ? parseInt(best[0]) : guessCols;
+    const clean = [];
+    for (const r of validRows) { const nn = r.filter(c => c !== null); if (nn.length === actualCols) clean.push(nn); }
+    matrixResult = { rows: clean, rawText: '(template match)' };
+  } else {
+    matrixResult = await ocrCanvas(worker, matrixProc);
+  }
   const targetResult = await ocrCanvas(worker, targetProc);
   await worker.terminate();
   // �������?
